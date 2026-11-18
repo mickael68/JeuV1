@@ -1,0 +1,247 @@
+using UnityEngine;
+
+/// <summary>
+/// Contrôleur FPS complet avec head bob, sprint, lampe torche.
+/// Remplace CharacterBody3D Godot par CharacterController Unity.
+/// </summary>
+[RequireComponent(typeof(CharacterController))]
+public class PlayerController : MonoBehaviour
+{
+    // ── Vitesses ──
+    [Header("Movement")]
+    [SerializeField] private float walkSpeed = 5.0f;
+    [SerializeField] private float sprintSpeed = 8.0f;
+    [SerializeField] private float backwardSpeedMultiplier = 0.6f;
+    [SerializeField] private float strafeSpeedMultiplier = 0.8f;
+
+    // ── Accélération / Décélération ──
+    [Header("Acceleration")]
+    [SerializeField] private float acceleration = 10f;
+    [SerializeField] private float deceleration = 8f;
+
+    // ── Saut & Gravité ──
+    [Header("Jump & Gravity")]
+    [SerializeField] private float jumpForce = 6f;
+    [SerializeField] private float gravity = 20f;
+    [SerializeField] private float fallGravityMultiplier = 1.5f;
+
+    // ── Caméra ──
+    [Header("Camera")]
+    [SerializeField] private float mouseSensitivity = 2.0f;
+    [SerializeField] private float normalFov = 70f;
+    [SerializeField] private float sprintFov = 80f;
+    [SerializeField] private float fovLerpSpeed = 6f;
+
+    // ── Head Bob ──
+    [Header("Head Bob")]
+    [SerializeField] private float headBobFrequency = 2.0f;
+    [SerializeField] private float headBobAmplitude = 0.04f;
+
+    // ── Lampe Torche ──
+    [Header("Flashlight")]
+    [SerializeField] private bool hasFlashlight = true;
+    [SerializeField] private Color flashlightColor = new Color(1f, 0.95f, 0.85f);
+    [SerializeField] private float flashlightIntensity = 2.5f;
+    [SerializeField] private float flashlightRange = 15f;
+    [SerializeField] private float flashlightAngle = 35f;
+
+    private CharacterController _controller;
+    private Camera _camera;
+    private Light _flashlight;
+    private float _rotationX = 0f;
+    private float _headBobTimer = 0f;
+    private float _defaultCameraY;
+    private Vector3 _velocity;
+
+    private PauseMenu _pauseMenu;
+
+    private void Start()
+    {
+        _controller = GetComponent<CharacterController>();
+        _camera = GetComponentInChildren<Camera>();
+
+        // Capture la souris
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        _defaultCameraY = _camera.transform.localPosition.y;
+        _camera.fieldOfView = normalFov;
+
+        SetupFlashlight();
+        SetupPauseMenu();
+        UpdateSettings();
+    }
+
+    private void SetupFlashlight()
+    {
+        if (!hasFlashlight) return;
+
+        // Cherche une lampe existante ou en crée une
+        _flashlight = _camera.GetComponentInChildren<Light>();
+        if (_flashlight == null)
+        {
+            GameObject flashlightObj = new GameObject("Flashlight");
+            flashlightObj.transform.SetParent(_camera.transform);
+            flashlightObj.transform.localPosition = new Vector3(0.3f, -0.2f, 0f);
+            flashlightObj.transform.localRotation = Quaternion.identity;
+
+            _flashlight = flashlightObj.AddComponent<Light>();
+            _flashlight.type = LightType.Spot;
+            _flashlight.color = flashlightColor;
+            _flashlight.intensity = flashlightIntensity;
+            _flashlight.range = flashlightRange;
+            _flashlight.spotAngle = flashlightAngle;
+            _flashlight.shadows = LightShadows.Soft;
+        }
+    }
+
+    private void SetupPauseMenu()
+    {
+        // Le PauseMenu sera un prefab dans la scène, pas créé dynamiquement
+        _pauseMenu = FindFirstObjectByType<PauseMenu>(FindObjectsInactive.Include);
+    }
+
+    public void UpdateSettings()
+    {
+        if (GameManager.Instance != null)
+        {
+            mouseSensitivity = GameManager.Instance.MouseSensitivity;
+            normalFov = GameManager.Instance.NormalFov;
+            sprintFov = GameManager.Instance.SprintFov;
+            headBobAmplitude = GameManager.Instance.HeadBobAmplitude;
+            walkSpeed = GameManager.Instance.WalkSpeed;
+            sprintSpeed = GameManager.Instance.SprintSpeed;
+        }
+    }
+
+    private void Update()
+    {
+        HandlePauseInput();
+
+        // Ne fait rien si le jeu est en pause ou la souris libre
+        if (Cursor.lockState != CursorLockMode.Locked) return;
+
+        HandleMouseLook();
+        HandleFlashlight();
+    }
+
+    private void FixedUpdate()
+    {
+        if (Cursor.lockState != CursorLockMode.Locked) return;
+        HandleMovement();
+    }
+
+    private void HandlePauseInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (_pauseMenu != null && !_pauseMenu.IsOpen)
+            {
+                _pauseMenu.OpenMenu();
+            }
+        }
+    }
+
+    private void HandleMouseLook()
+    {
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+
+        // Rotation horizontale du corps
+        transform.Rotate(Vector3.up * mouseX);
+
+        // Rotation verticale de la caméra (clampée)
+        _rotationX -= mouseY;
+        _rotationX = Mathf.Clamp(_rotationX, -90f, 90f);
+        _camera.transform.localRotation = Quaternion.Euler(_rotationX, 0f, 0f);
+    }
+
+    private void HandleFlashlight()
+    {
+        if (_flashlight != null && Input.GetKeyDown(KeyCode.F))
+        {
+            _flashlight.enabled = !_flashlight.enabled;
+            Debug.Log($"[Player] Lampe torche : {(_flashlight.enabled ? "ON" : "OFF")}");
+        }
+    }
+
+    private void HandleMovement()
+    {
+        float dt = Time.fixedDeltaTime;
+
+        // ── Gravité ──
+        if (_controller.isGrounded)
+        {
+            if (_velocity.y < 0) _velocity.y = -2f; // Petit offset pour rester collé au sol
+        }
+        else
+        {
+            float gravForce = gravity;
+            if (_velocity.y < 0) gravForce *= fallGravityMultiplier;
+            _velocity.y -= gravForce * dt;
+        }
+
+        // ── Saut ──
+        if (Input.GetKey(KeyCode.Space) && _controller.isGrounded)
+        {
+            _velocity.y = jumpForce;
+        }
+
+        // ── Sprint ──
+        bool isSprinting = Input.GetKey(KeyCode.LeftShift) && _controller.isGrounded;
+        float targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
+
+        // ── Direction ──
+        float inputX = Input.GetAxisRaw("Horizontal"); // A/D
+        float inputZ = Input.GetAxisRaw("Vertical");   // W/S
+        Vector3 direction = (transform.right * inputX + transform.forward * inputZ).normalized;
+
+        // ── Multiplicateur directionnel ──
+        if (direction.sqrMagnitude > 0.01f)
+        {
+            float speedMultiplier = 1.0f;
+            if (inputZ < -0.1f)
+                speedMultiplier = backwardSpeedMultiplier;
+            else if (Mathf.Abs(inputX) > 0.1f && Mathf.Abs(inputZ) < 0.1f)
+                speedMultiplier = strafeSpeedMultiplier;
+
+            float finalSpeed = targetSpeed * speedMultiplier;
+
+            // Accélération progressive
+            _velocity.x = Mathf.MoveTowards(_velocity.x, direction.x * finalSpeed, acceleration * dt);
+            _velocity.z = Mathf.MoveTowards(_velocity.z, direction.z * finalSpeed, acceleration * dt);
+        }
+        else
+        {
+            // Décélération progressive
+            _velocity.x = Mathf.MoveTowards(_velocity.x, 0f, deceleration * dt);
+            _velocity.z = Mathf.MoveTowards(_velocity.z, 0f, deceleration * dt);
+        }
+
+        _controller.Move(_velocity * dt);
+
+        // ── Head Bobbing ──
+        Vector2 horizontalVelocity = new Vector2(_velocity.x, _velocity.z);
+        if (_controller.isGrounded && horizontalVelocity.magnitude > 0.5f)
+        {
+            float bobFreq = isSprinting ? headBobFrequency * 1.5f : headBobFrequency;
+            _headBobTimer += dt * bobFreq;
+            float bobOffset = Mathf.Sin(_headBobTimer * Mathf.PI * 2f) * headBobAmplitude;
+
+            Vector3 camPos = _camera.transform.localPosition;
+            camPos.y = _defaultCameraY + bobOffset;
+            _camera.transform.localPosition = camPos;
+        }
+        else
+        {
+            _headBobTimer = 0f;
+            Vector3 camPos = _camera.transform.localPosition;
+            camPos.y = Mathf.MoveTowards(camPos.y, _defaultCameraY, headBobAmplitude * 20f * dt);
+            _camera.transform.localPosition = camPos;
+        }
+
+        // ── Effet FOV dynamique ──
+        float targetFovValue = isSprinting && horizontalVelocity.magnitude > 1.0f ? sprintFov : normalFov;
+        _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView, targetFovValue, fovLerpSpeed * dt);
+    }
+}
