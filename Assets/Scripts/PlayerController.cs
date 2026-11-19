@@ -45,6 +45,20 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float flashlightRange = 15f;
     [SerializeField] private float flashlightAngle = 35f;
 
+    // ── Accroupissement ──
+    [Header("Crouch")]
+    [Tooltip("Maintenir Ctrl gauche ou C pour s'accroupir (tunnels, trous, bouches d'aération).")]
+    [SerializeField] private float crouchHeight = 1.0f;
+    [SerializeField] private float crouchSpeedMultiplier = 0.45f;
+    [SerializeField] private float crouchTransitionSpeed = 6f;
+
+    private bool _isCrouching;
+    private float _standHeight;
+    private float _standCenterY;
+    private float _standCameraY;
+
+    public bool IsCrouching => _isCrouching;
+
     private CharacterController _controller;
     private Camera _camera;
     private Light _flashlight;
@@ -65,6 +79,9 @@ public class PlayerController : MonoBehaviour
         Cursor.visible = false;
 
         _defaultCameraY = _camera.transform.localPosition.y;
+        _standCameraY = _defaultCameraY;
+        _standHeight = _controller.height;
+        _standCenterY = _controller.center.y;
         _camera.fieldOfView = normalFov;
 
         SetupFlashlight();
@@ -181,15 +198,19 @@ public class PlayerController : MonoBehaviour
             _velocity.y -= gravForce * dt;
         }
 
+        // ── Accroupissement ──
+        UpdateCrouch(dt);
+
         // ── Saut ──
-        if (Input.GetKey(KeyCode.Space) && _controller.isGrounded)
+        if (Input.GetKey(KeyCode.Space) && _controller.isGrounded && !_isCrouching)
         {
             _velocity.y = jumpForce;
         }
 
         // ── Sprint ──
-        bool isSprinting = Input.GetKey(KeyCode.LeftShift) && _controller.isGrounded;
+        bool isSprinting = Input.GetKey(KeyCode.LeftShift) && _controller.isGrounded && !_isCrouching;
         float targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
+        if (_isCrouching) targetSpeed *= crouchSpeedMultiplier;
 
         // ── Direction ──
         float inputX = Input.GetAxisRaw("Horizontal"); // A/D
@@ -243,5 +264,29 @@ public class PlayerController : MonoBehaviour
         // ── Effet FOV dynamique ──
         float targetFovValue = isSprinting && horizontalVelocity.magnitude > 1.0f ? sprintFov : normalFov;
         _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView, targetFovValue, fovLerpSpeed * dt);
+    }
+
+    private void UpdateCrouch(float dt)
+    {
+        bool wantsCrouch = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C);
+        if (wantsCrouch) _isCrouching = true;
+        else if (_isCrouching && CanStandUp()) _isCrouching = false; // reste accroupi sous un plafond bas
+
+        float targetHeight = _isCrouching ? crouchHeight : _standHeight;
+        float height = Mathf.MoveTowards(_controller.height, targetHeight, crouchTransitionSpeed * dt);
+        if (!Mathf.Approximately(height, _controller.height))
+        {
+            _controller.height = height;
+            _controller.center = new Vector3(_controller.center.x, _standCenterY - (_standHeight - height) * 0.5f, _controller.center.z);
+        }
+        _defaultCameraY = _standCameraY - (_standHeight - _controller.height);
+    }
+
+    private bool CanStandUp()
+    {
+        float radius = _controller.radius * 0.95f;
+        Vector3 top = transform.position + _controller.center + Vector3.up * (_controller.height * 0.5f - radius);
+        float distance = _standHeight - _controller.height + 0.05f;
+        return !Physics.SphereCast(top, radius, Vector3.up, out _, distance, ~0, QueryTriggerInteraction.Ignore);
     }
 }

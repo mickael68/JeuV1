@@ -51,6 +51,18 @@ public static class EchoesMapGenerator
     const int MazeNX = 20, MazeNZ = 14;
     const int MazeWestDoorI = 5, MazeEastDoorI = 15, MazeDoorJ = 6; // portes à x = -20 et x = 20, z ∈ [-6, -2]
 
+    // Ascenseur de la résidence (étages 3 → 0) : gaine x ∈ [-4, 0], z ∈ [-10, -6], porte au nord (z = -6)
+    const int ElevNodeI = 9, ElevNodeJ = 5;            // nœud du labyrinthe occupé par la gaine
+    const float ElevDoorX = -2f, ElevFrontZ = -6f;
+    static readonly Rect ElevRect = Rect.MinMaxRect(-4f, -10f, 0f, -6f);
+    static readonly Rect ElevHole = Rect.MinMaxRect(-3.9f, -9.9f, -0.1f, -6.1f);
+    const int ElevRoomIndex = 4;                        // chambre sud n°4 des dortoirs = palier de l'ascenseur
+
+    // Tunnel d'aération -2 → -3 : arrive dans l'impasse (14, 0) des tunnels
+    static readonly int[] VentCandidates = { 2, 3, 4, 6, 7, 16, 17 };
+    const int VentExitI = 14;
+    static int _ventI;
+
     // Modèles Kenney déjà présents dans le projet
     const string KFurniture = "Assets/Models/Environment/Outside/kenney_furniture-kit/Models/FBX format/";
     const string KSurvival = "Assets/Models/Environment/Outside/kenney_survival-kit/Models/FBX format/";
@@ -70,11 +82,14 @@ public static class EchoesMapGenerator
         public Transform root, props, markers;
         public float halfX = HalfX, zMin, zMax;   // emprise réelle (renseignée à la construction)
         public List<Vector3> patrol;              // ronde personnalisée (sinon couloir central)
+        public Dictionary<Vector2Int, Hole> holesX; // étages en grille : ouverture dans un mur parallèle à X, clé (i, ligne j)
     }
 
     class ShaftDef
     {
         public Side side; public int[] levels; // du plus bas au plus haut
+        public int rubbleLevel = int.MinValue; // palier bouché par un éboulement
+        public int gateLevel = int.MinValue;   // grille verrouillée sur la volée qui descend depuis cet étage
         public ShaftDef(Side s, params int[] l) { side = s; levels = l; }
     }
 
@@ -132,10 +147,11 @@ public static class EchoesMapGenerator
 
     static List<ShaftDef> DefineShafts() => new List<ShaftDef>
     {
-        new ShaftDef(Side.West, 0, 1, 2, 3), // escalier principal de la résidence
-        new ShaftDef(Side.East, -1, 0),      // escalier condamné vers le sous-sol
-        new ShaftDef(Side.West, -2, -1),
-        new ShaftDef(Side.East, -3, -2),
+        // Escalier principal de la résidence : bouché par un éboulement au niveau 0
+        new ShaftDef(Side.West, 0, 1, 2, 3) { rubbleLevel = 0 },
+        // Escalier caché du niveau 0 vers -1 et -2 ; grille verrouillée au -1 (missions à finir avant le -2)
+        new ShaftDef(Side.East, -2, -1, 0) { gateLevel = -1 },
+        // -2 → -3 : pas d'escalier ni d'ascenseur, mais le tunnel d'aération (BuildVentTunnel)
         new ShaftDef(Side.West, -4, -3),
         new ShaftDef(Side.East, -5, -4),
         new ShaftDef(Side.West, -6, -5),
@@ -178,6 +194,13 @@ public static class EchoesMapGenerator
                     if (s.side == Side.East) _levels[n].doorEast = true; else _levels[n].doorWest = true;
                 }
 
+            // Bouche d'aération cachée à un endroit aléatoire du mur sud du -2, sortie dans une impasse du -3
+            _ventI = VentCandidates[_rng.Next(VentCandidates.Length)];
+            _levels[-2].holesX = new Dictionary<Vector2Int, Hole>
+                { [new Vector2Int(_ventI, 0)] = new Hole(-HalfX + (_ventI + 0.5f) * Cell, 1f, _levels[-2].y, _levels[-2].y + 1.2f) };
+            _levels[-3].holesX = new Dictionary<Vector2Int, Hole>
+                { [new Vector2Int(VentExitI, 0)] = new Hole(-HalfX + (VentExitI + 0.5f) * Cell, 1f, _levels[-3].y, _levels[-3].y + 1.2f) };
+
             for (int i = 0; i < levels.Count; i++)
             {
                 var L = levels[i];
@@ -189,6 +212,8 @@ public static class EchoesMapGenerator
             shaftRoot.SetParent(root, false);
             foreach (var s in shafts) BuildShaft(shaftRoot, s);
 
+            BuildElevator(root);
+            BuildVentTunnel(root);
             BuildActors(root);
             EnsureSunPlayerAndSystems();
 
@@ -205,7 +230,7 @@ public static class EchoesMapGenerator
         AddSceneToBuild();
         AssetDatabase.SaveAssets();
 
-        Debug.Log("[EchoesMap] Map générée dans " + ScenePath + " — 10 niveaux, 7 cages d'escalier.");
+        Debug.Log("[EchoesMap] Map générée dans " + ScenePath + " — 10 niveaux, escaliers, ascenseur (3 → 0) et tunnel d'aération (-2 → -3).");
     }
 
     // ───────────────────────── Étages ─────────────────────────
@@ -261,8 +286,26 @@ public static class EchoesMapGenerator
     {
         var mf = Mat("Sol_" + L.number, L.floor);
         var mc = Mat("Plafond_" + L.number, L.wall * 0.8f);
-        Box(L.root, "Sol", new Vector3(-HalfX - 0.1f, L.y - Slab, zMin - 0.1f), new Vector3(HalfX + 0.1f, L.y, zMax + 0.1f), mf, _layerGround);
-        Box(L.root, "Plafond", new Vector3(-HalfX - 0.1f, L.y + L.h, zMin - 0.1f), new Vector3(HalfX + 0.1f, L.y + L.h + Slab, zMax + 0.1f), mc, _layerWalls);
+        // Dortoirs : trémie de l'ascenseur (sol des étages 1-3, plafond des étages 1-2 ; le 3 garde son toit)
+        bool dorm = L.kind == Kind.Dorm;
+        Rect? floorHole = dorm && L.number >= 1 ? ElevHole : (Rect?)null;
+        Rect? ceilHole = dorm && L.number <= 2 ? ElevHole : (Rect?)null;
+        SlabWithHole(L.root, "Sol", -HalfX - 0.1f, HalfX + 0.1f, zMin - 0.1f, zMax + 0.1f, L.y - Slab, L.y, floorHole, mf, _layerGround);
+        SlabWithHole(L.root, "Plafond", -HalfX - 0.1f, HalfX + 0.1f, zMin - 0.1f, zMax + 0.1f, L.y + L.h, L.y + L.h + Slab, ceilHole, mc, _layerWalls);
+    }
+
+    static void SlabWithHole(Transform p, string n, float x0, float x1, float z0, float z1, float ya, float yb, Rect? hole, Material m, int layer)
+    {
+        if (hole == null)
+        {
+            Box(p, n, new Vector3(x0, ya, z0), new Vector3(x1, yb, z1), m, layer);
+            return;
+        }
+        var h = hole.Value;
+        Box(p, n, new Vector3(x0, ya, z0), new Vector3(x1, yb, h.yMin), m, layer);
+        Box(p, n, new Vector3(x0, ya, h.yMax), new Vector3(x1, yb, z1), m, layer);
+        Box(p, n, new Vector3(x0, ya, h.yMin), new Vector3(h.xMin, yb, h.yMax), m, layer);
+        Box(p, n, new Vector3(h.xMax, ya, h.yMin), new Vector3(x1, yb, h.yMax), m, layer);
     }
 
     static Hole[] ShaftDoor(LevelDef L, bool hasDoor) =>
@@ -316,7 +359,9 @@ public static class EchoesMapGenerator
         for (int k = 0; k < widths.Length; k++)
         {
             float w = widths[k];
+            bool elevatorLobby = L.kind == Kind.Dorm && !north && k == ElevRoomIndex;
             float doorW = L.kind == Kind.Basement && w > 6f ? 1.8f : 1.1f;
+            if (elevatorLobby) doorW = 1.6f;
             if (L.kind == Kind.Abandoned && _rng.NextDouble() < 0.3) doorW = 2.4f; // porte arrachée
             holes.Add(new Hole(x + w * 0.5f, doorW, L.y, L.y + DoorH - 0.1f));
 
@@ -328,7 +373,7 @@ public static class EchoesMapGenerator
             }
 
             var room = Rect.MinMaxRect(x, zLo, x + w, zHi);
-            Furnish(L, room, north, k, widths.Length);
+            if (!elevatorLobby) Furnish(L, room, north, k, widths.Length); // palier construit par BuildElevator
             x += w;
         }
 
@@ -559,8 +604,13 @@ public static class EchoesMapGenerator
         // Emplacements des cages d'escalier (fermés)
         for (int i = 3; i <= 4; i++) for (int j = 6; j <= 8; j++) open[i, j] = false;
         for (int i = 15; i <= 16; i++) for (int j = 6; j <= 8; j++) open[i, j] = false;
+        // Gaine de l'ascenseur de la résidence (arrivée au niveau 0, où il tombe en panne)
+        open[ElevNodeI, ElevNodeJ] = false;
 
         bool Open(int i, int j) => i >= 0 && i < MazeNX && j >= 0 && j < MazeNZ && open[i, j];
+        // La niche devant l'escalier caché (vers -1/-2) n'est reliée au labyrinthe que par un trou à ramper.
+        const int pocketI = MazeEastDoorI - 1, pocketJ = MazeDoorJ;
+        bool Carvable(int i, int j) => Open(i, j) && !(i == pocketI && j == pocketJ);
         var east = new bool[MazeNX, MazeNZ];   // passage entre (i,j) et (i+1,j)
         var north = new bool[MazeNX, MazeNZ];  // passage entre (i,j) et (i,j+1)
         void Link(int i, int j, int ni, int nj)
@@ -569,11 +619,11 @@ public static class EchoesMapGenerator
             else if (nj > j) north[i, j] = true; else north[i, nj] = true;
         }
 
-        // 1) Backtracking depuis la porte ouest (arrivée depuis les dortoirs)
+        // 1) Backtracking depuis le hall (arrivée de l'ascenseur)
         var visited = new bool[MazeNX, MazeNZ];
         var stack = new Stack<Vector2Int>();
-        stack.Push(new Vector2Int(MazeWestDoorI, MazeDoorJ));
-        visited[MazeWestDoorI, MazeDoorJ] = true;
+        stack.Push(new Vector2Int(ElevNodeI, ElevNodeJ + 1));
+        visited[ElevNodeI, ElevNodeJ + 1] = true;
         var dirs = new[] { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
         var choices = new List<Vector2Int>();
         while (stack.Count > 0)
@@ -583,7 +633,7 @@ public static class EchoesMapGenerator
             foreach (var d in dirs)
             {
                 var n = c + d;
-                if (Open(n.x, n.y) && !visited[n.x, n.y]) choices.Add(n);
+                if (Carvable(n.x, n.y) && !visited[n.x, n.y]) choices.Add(n);
             }
             if (choices.Count == 0) { stack.Pop(); continue; }
             var next = choices[_rng.Next(choices.Count)];
@@ -592,15 +642,17 @@ public static class EchoesMapGenerator
             stack.Push(next);
         }
 
-        // 2) Hall d'entrée 3×3 devant la porte ouest
-        var special = new int[MazeNX, MazeNZ]; // 0 couloir, 1 hall, 2+ chambre
-        for (int i = 5; i <= 7; i++)
-            for (int j = 5; j <= 7; j++)
+        // 2) Hall 3×3 devant la porte de l'ascenseur
+        var special = new int[MazeNX, MazeNZ]; // 0 couloir, 1 hall, 2+ chambre, 99 niche cachée
+        int hx0 = ElevNodeI - 1, hx1 = ElevNodeI + 1, hz0 = ElevNodeJ + 1, hz1 = ElevNodeJ + 3;
+        for (int i = hx0; i <= hx1; i++)
+            for (int j = hz0; j <= hz1; j++)
             {
                 special[i, j] = 1;
-                if (i < 7) east[i, j] = true;
-                if (j < 7) north[i, j] = true;
+                if (i < hx1) east[i, j] = true;
+                if (j < hz1) north[i, j] = true;
             }
+        special[pocketI, pocketJ] = 99;
 
         // 3) Chambres abandonnées 2×2 (8 × 8 m)
         var rooms = new List<RectInt>();
@@ -615,7 +667,8 @@ public static class EchoesMapGenerator
                     if (inside && !Open(a, b)) ok = false;
                     if (a >= 0 && a < MazeNX && b >= 0 && b < MazeNZ && special[a, b] != 0) ok = false; // marge d'un nœud
                 }
-            if (ok && (Mathf.Abs(i - (MazeEastDoorI - 1)) + Mathf.Abs(j - MazeDoorJ) < 3)) ok = false;
+            if (ok && (Mathf.Abs(i - pocketI) + Mathf.Abs(j - pocketJ) < 3)) ok = false;
+            if (ok && (Mathf.Abs(i - MazeWestDoorI) + Mathf.Abs(j - MazeDoorJ) < 2)) ok = false;
             if (!ok) continue;
 
             int id = rooms.Count + 2;
@@ -628,9 +681,9 @@ public static class EchoesMapGenerator
         for (int i = 0; i < MazeNX; i++)
             for (int j = 0; j < MazeNZ; j++)
             {
-                if (!Open(i, j)) continue;
-                if (Open(i + 1, j) && !east[i, j] && _rng.NextDouble() < 0.08) east[i, j] = true;
-                if (Open(i, j + 1) && !north[i, j] && _rng.NextDouble() < 0.08) north[i, j] = true;
+                if (!Carvable(i, j)) continue;
+                if (Carvable(i + 1, j) && !east[i, j] && _rng.NextDouble() < 0.08) east[i, j] = true;
+                if (Carvable(i, j + 1) && !north[i, j] && _rng.NextDouble() < 0.08) north[i, j] = true;
             }
 
         // 5) Sol et plafond par bandes (pas au-dessus des cages d'escalier)
@@ -652,7 +705,19 @@ public static class EchoesMapGenerator
             }
         }
 
-        // 6) Murs (fusionnés en segments), portes des cages d'escalier
+        // 6) Murs (fusionnés en segments) avec ouvertures particulières :
+        //    porte de l'ascenseur, trou à ramper vers la niche, portes des cages d'escalier.
+        var holesH = new Dictionary<Vector2Int, Hole>   // clé (i, ligne j) : mur parallèle à X
+        {
+            [new Vector2Int(ElevNodeI, ElevNodeJ + 1)] = new Hole(ElevDoorX, 1.4f, y0, y0 + DoorH),
+            [new Vector2Int(pocketI, pocketJ + 1)] = new Hole(MazeX0 + (pocketI + 0.5f) * MazeP + 1f, 1f, y0, y0 + 1.2f),
+        };
+        var holesV = new Dictionary<Vector2Int, Hole>   // clé (colonne i, j) : mur parallèle à Z
+        {
+            [new Vector2Int(MazeWestDoorI, MazeDoorJ)] = new Hole(DoorZ, DoorW, y0, y0 + DoorH),
+            [new Vector2Int(MazeEastDoorI, MazeDoorJ)] = new Hole(DoorZ, DoorW, y0, y0 + DoorH),
+        };
+
         for (int j = 0; j <= MazeNZ; j++)
         {
             float z = MazeZ0 + j * MazeP;
@@ -664,6 +729,11 @@ public static class EchoesMapGenerator
                 {
                     bool a = Open(i, j - 1), b = Open(i, j);
                     need = a && b ? !north[i, j - 1] : a || b;
+                    if (holesH.TryGetValue(new Vector2Int(i, j), out var hh))
+                    {
+                        WallAlongX(L.root, "Mur_Ouverture", z, MazeX0 + i * MazeP - Wall / 2, MazeX0 + (i + 1) * MazeP + Wall / 2, y0, y1, mw, hh);
+                        need = false;
+                    }
                 }
                 if (need && start < 0) start = i;
                 if (!need && start >= 0)
@@ -679,16 +749,14 @@ public static class EchoesMapGenerator
             int start = -1;
             for (int j = 0; j <= MazeNZ; j++)
             {
-                bool need = false, door = false;
+                bool need = false;
                 if (j < MazeNZ)
                 {
                     bool a = Open(i - 1, j), b = Open(i, j);
                     need = a && b ? !east[i - 1, j] : a || b;
-                    door = j == MazeDoorJ && (i == MazeWestDoorI || i == MazeEastDoorI);
-                    if (door)
+                    if (holesV.TryGetValue(new Vector2Int(i, j), out var hv))
                     {
-                        WallAlongZ(L.root, "Mur_Porte_Escalier", x, MazeZ0 + j * MazeP, MazeZ0 + (j + 1) * MazeP, y0, y1, mw,
-                            new Hole(DoorZ, DoorW, y0, y0 + DoorH));
+                        WallAlongZ(L.root, "Mur_Porte_Escalier", x, MazeZ0 + j * MazeP, MazeZ0 + (j + 1) * MazeP, y0, y1, mw, hv);
                         need = false;
                     }
                 }
@@ -719,16 +787,30 @@ public static class EchoesMapGenerator
                 Marker(L, "Tuto_Cachette (armoire)", wardrobe != null ? wardrobe.transform.position : Node(rm.x, rm.y), Color.yellow);
         }
 
-        // 8) Hall : premières consignes du tutoriel
-        var hall = Node(6, 6);
-        Marker(L, "Entree_Nocturne (arrivee des dortoirs)", Node(5, 6) + new Vector3(-1.2f, 0, 0), Color.yellow);
+        // 8) Hall : arrivée de l'ascenseur en panne, premières consignes du tutoriel
+        var hall = Node(ElevNodeI, ElevNodeJ + 2);
+        Marker(L, "Arrivee_Ascenseur (panne de courant)", Node(ElevNodeI, ElevNodeJ + 1) + new Vector3(1.2f, 0, -0.8f), Color.yellow);
         Marker(L, "Tuto_LampeTorche", hall, Color.yellow);
-        Marker(L, "Tuto_Discretion (bruit de pas)", Node(7, 5), Color.yellow);
-        Model(L, KFurniture + "bench", Node(6, 7) + new Vector3(0, 0, 1.4f), 180f, new Vector3(1.8f, 0.5f, 0.5f), mp);
-        Model(L, KFurniture + "coatRackStanding", Node(7, 7) + new Vector3(1.4f, 0, 1.4f), 0f, new Vector3(0.5f, 1.8f, 0.5f), mp);
-        Model(L, KFurniture + "pottedPlant", Node(5, 5) + new Vector3(-1.4f, 0, -1.4f), 0f, new Vector3(0.6f, 1.2f, 0.6f), mp);
-        ScatterBoxes(L, new Rect(hall.x + 1f, hall.z - 5.5f, 3f, 2f), 3);
-        Marker(L, "Acces_Sous-sol (escalier condamne)", Node(MazeEastDoorI - 1, MazeDoorJ) + new Vector3(1.2f, 0, 0), Color.yellow);
+        Marker(L, "Tuto_Discretion (bruit de pas)", Node(hx1, hz1), Color.yellow);
+        Model(L, KFurniture + "bench", Node(ElevNodeI, hz1) + new Vector3(0, 0, 1.4f), 180f, new Vector3(1.8f, 0.5f, 0.5f), mp);
+        Model(L, KFurniture + "coatRackStanding", Node(hx1, hz1) + new Vector3(1.4f, 0, 1.4f), 0f, new Vector3(0.5f, 1.8f, 0.5f), mp);
+        Model(L, KFurniture + "pottedPlant", Node(hx0, hz0) + new Vector3(-1.4f, 0, -1.2f), 0f, new Vector3(0.6f, 1.2f, 0.6f), mp);
+        ScatterBoxes(L, new Rect(Node(hx0, hz1).x - 1.5f, Node(hx0, hz1).z, 3f, 1.5f), 3);
+
+        // Éboulement : l'escalier vers les étages supérieurs est bloqué au niveau 0
+        var rubbleAt = Node(MazeWestDoorI, MazeDoorJ);
+        RockPile(L, new Rect(rubbleAt.x - 2f, DoorZ - 1.6f, 2.2f, 3.2f), 9, mp);
+        Cube(L.props, "Eboulement_Collision", new Vector3(-HalfX + 0.7f, y0 + 1.3f, DoorZ), new Vector3(1.4f, 2.6f, 2.6f), Quaternion.identity, mp, true, _layerWalls)
+            .GetComponent<Renderer>().enabled = false;
+        Marker(L, "Escalier_Bloque (eboulement vers les dortoirs)", rubbleAt + new Vector3(0.8f, 0, 1.4f), Color.yellow);
+
+        // Escalier caché vers -1 / -2 : niche accessible seulement en rampant
+        var pocket = Node(pocketI, pocketJ);
+        Marker(L, "Escalier_Cache (vers -1, puis -2)", pocket + new Vector3(1.2f, 0, 0), Color.yellow);
+        Marker(L, "Passage_Cache (ramper : Ctrl / C)", Node(pocketI, pocketJ + 1) + new Vector3(1f, 0, -1.2f), Color.yellow);
+        ScatterBoxes(L, new Rect(pocket.x - 1.8f, pocket.z + 2.4f, 1.6f, 1.2f), 3); // cartons qui masquent le trou
+        Model(L, KFurniture + "bookcaseOpenLow", Node(pocketI, pocketJ + 1) + new Vector3(-0.4f, 0, -1.5f), 0f, new Vector3(1.2f, 1f, 0.4f), mp);
+        RockPile(L, new Rect(pocket.x - 1.8f, pocket.z - 1.6f, 1.2f, 1.2f), 3, mp);
 
         // 9) Couloirs : encombrement, impasses avec notes
         string[] clutter = { KFurniture + "chair", KFurniture + "chairCushion", KFurniture + "trashcan", KFurniture + "cardboardBoxOpen",
@@ -738,7 +820,8 @@ public static class EchoesMapGenerator
             for (int j = 0; j < MazeNZ; j++)
             {
                 if (!open[i, j] || special[i, j] != 0) continue;
-                if (j == MazeDoorJ && (i == MazeWestDoorI || i == MazeEastDoorI - 1)) continue;
+                if (j == MazeDoorJ && i == MazeWestDoorI) continue;          // éboulement
+                if (i == pocketI && j == pocketJ + 1) continue;               // devant le trou à ramper
                 var c = Node(i, j);
                 var off = new Vector3(Rand(-1.2f, 1.2f), 0, Rand(-1.2f, 1.2f));
 
@@ -765,11 +848,13 @@ public static class EchoesMapGenerator
         // 10) Seules lumières : veilleuses de secours vertes (l'électricité est coupée)
         var green = Mat("Veilleuse_Secours", new Color(0.2f, 1f, 0.35f), 0.8f);
         var exitLight = new LevelDef { lightColor = new Color(0.25f, 1f, 0.4f), lightIntensity = 0.5f, flicker = 0.5f, root = L.root };
-        var signNodes = new List<Vector2Int> { new Vector2Int(MazeWestDoorI, MazeDoorJ), new Vector2Int(MazeEastDoorI - 1, MazeDoorJ) };
+        // Pas de veilleuse dans la niche cachée : on ne doit pas la repérer de loin.
+        var signNodes = new List<Vector2Int> { new Vector2Int(MazeWestDoorI, MazeDoorJ), new Vector2Int(ElevNodeI, ElevNodeJ + 1) };
         for (int tries = 0; tries < 300 && signNodes.Count < 12; tries++)
         {
             var n = new Vector2Int(_rng.Next(MazeNX), _rng.Next(MazeNZ));
             if (!open[n.x, n.y] || special[n.x, n.y] >= 2) continue;
+            if (Mathf.Abs(n.x - pocketI) + Mathf.Abs(n.y - pocketJ) < 3) continue;
             bool far = true;
             foreach (var o in signNodes) if (Mathf.Abs(o.x - n.x) + Mathf.Abs(o.y - n.y) < 4) { far = false; break; }
             if (far) signNodes.Add(n);
@@ -782,7 +867,18 @@ public static class EchoesMapGenerator
         }
 
         // 11) Ronde du surveillant à travers le labyrinthe
-        L.patrol = new List<Vector3> { Node(7, 6), Node(10, 2), Node(13, 6), Node(10, 11) };
+        L.patrol = new List<Vector3> { hall, Node(10, 2), Node(13, 5), Node(10, 11), Node(4, 10) };
+    }
+
+    static void RockPile(LevelDef L, Rect r, int count, Material fallback)
+    {
+        string[] rocks = { KGraveyard + "rocks", KGraveyard + "rocks-tall", KSurvival + "rock-a", KSurvival + "rock-b", KSurvival + "rock-c", KSurvival + "resource-stone-large" };
+        for (int i = 0; i < count; i++)
+        {
+            float sz = Rand(0.6f, 1.6f);
+            var p = new Vector3(Rand(r.xMin, r.xMax), L.y, Rand(r.yMin, r.yMax));
+            Model(L, rocks[_rng.Next(rocks.Length)], p, Rand(0, 360), new Vector3(sz, sz * 1.2f, sz), fallback);
+        }
     }
 
     // ── Disposition grille : murs générés automatiquement autour des cellules praticables ──
@@ -802,6 +898,12 @@ public static class EchoesMapGenerator
             for (int i = 0; i <= GridNI; i++)
             {
                 bool need = i < GridNI && W(i, jb - 1) != W(i, jb);
+                if (need && L.holesX != null && L.holesX.TryGetValue(new Vector2Int(i, jb), out var gh))
+                {
+                    float zh = GridZMin + jb * Cell;
+                    WallAlongX(L.root, "Mur_Bouche_Aeration", zh, -HalfX + i * Cell, -HalfX + (i + 1) * Cell, y0, y1, mw, gh);
+                    need = false;
+                }
                 if (need && start < 0) start = i;
                 if (!need && start >= 0)
                 {
@@ -1103,6 +1205,181 @@ public static class EchoesMapGenerator
                 Box(go, "Marche", new Vector3(bx0, t - 0.3f, zn - (j + 1) * tread), new Vector3(bx1, t, zn - j * tread), ms, _layerGround);
             }
         }
+
+        foreach (var L in lv)
+        {
+            // Éboulement : le palier (et la porte) de cet étage sont bouchés
+            if (L.number == s.rubbleLevel)
+            {
+                RockPile(L, Rect.MinMaxRect(x0 + 0.3f, z0 + 0.2f, x0 + ShaftW - 0.3f, zs + 0.6f), 10, ms);
+                Cube(go, "Eboulement_Collision", new Vector3(x0 + ShaftW * 0.5f, L.y + 1.3f, (z0 + zs + 0.6f) * 0.5f),
+                    new Vector3(ShaftW, 2.6f, zs + 0.6f - z0), Quaternion.identity, ms, true, _layerWalls).GetComponent<Renderer>().enabled = false;
+            }
+
+            // Grille verrouillée en haut de la volée qui descend depuis cet étage (moitié B)
+            if (L.number == s.gateLevel)
+            {
+                var metal = Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f);
+                var gate = Cube(go, "Grille_Verrouillee (missions du " + L.number + ")", new Vector3((bx0 + bx1) * 0.5f, L.y + 1.2f, zs + 0.06f),
+                    new Vector3(bx1 - bx0, 2.4f, 0.1f), Quaternion.identity, metal, true, _layerWalls);
+                gate.GetComponent<Renderer>().enabled = false;
+                for (float bx = bx0 + 0.12f; bx < bx1; bx += 0.22f)
+                    Cube(gate.transform, "Barreau", new Vector3(bx, L.y + 1.2f, zs + 0.06f), new Vector3(0.04f, 2.4f, 0.04f), Quaternion.identity, metal, false, -1);
+                foreach (var by in new[] { 0.15f, 1.2f, 2.3f })
+                    Cube(gate.transform, "Traverse", new Vector3((bx0 + bx1) * 0.5f, L.y + by, zs + 0.06f), new Vector3(bx1 - bx0, 0.06f, 0.06f), Quaternion.identity, metal, false, -1);
+                Cube(gate.transform, "Cadenas", new Vector3((bx0 + bx1) * 0.5f, L.y + 1.1f, zs - 0.02f), new Vector3(0.12f, 0.16f, 0.06f), Quaternion.identity, Mat("Cadenas", new Color(0.7f, 0.6f, 0.2f), 0.7f), false, -1);
+                gate.AddComponent<LockedGate>();
+                NonStatic(gate);
+                Marker(L, "Grille_Verrouillee (vers -2 : missions du -1 a finir)", new Vector3((bx0 + bx1) * 0.5f, L.y, z0 + 0.6f), Color.magenta);
+            }
+        }
+    }
+
+    // ───────────────────────── Ascenseur de la résidence (3 → 0) ─────────────────────────
+    static void BuildElevator(Transform root)
+    {
+        var go = new GameObject("Ascenseur_Residence (3 -> 0, panne au niveau 0)").transform;
+        go.SetParent(root, false);
+        var elevator = go.gameObject.AddComponent<Elevator>();
+        var mWall = Mat("Ascenseur_Mur", new Color(0.55f, 0.56f, 0.58f));
+        var mDoor = Mat("Ascenseur_Porte", new Color(0.72f, 0.74f, 0.78f), 0.7f);
+        var mCab = Mat("Ascenseur_Cabine", new Color(0.45f, 0.38f, 0.3f), 0.4f);
+        var mButton = Mat("Ascenseur_Bouton", new Color(1f, 0.85f, 0.4f), 0.6f);
+        int[] floors = { 3, 2, 1, 0 };
+
+        Box(go, "Fond_Fosse", new Vector3(ElevRect.xMin, -Slab, ElevRect.yMin), new Vector3(ElevRect.xMax, 0f, ElevRect.yMax), mWall, _layerGround);
+
+        foreach (var n in floors)
+        {
+            var L = _levels[n];
+            // Au niveau 0, le mur de la gaine est construit par le labyrinthe (avec l'ouverture).
+            if (n >= 1)
+                WallAlongX(go, "Facade_Ascenseur_" + n, ElevFrontZ, ElevRect.xMin, ElevRect.xMax, L.y, L.y + L.h, mWall, new Hole(ElevDoorX, 1.4f, L.y, L.y + DoorH));
+
+            var door = Cube(go, "Porte_Palier_" + n, new Vector3(ElevDoorX, L.y + DoorH * 0.5f, ElevFrontZ - 0.16f), new Vector3(1.4f, DoorH, 0.06f), Quaternion.identity, mDoor, true, _layerWalls);
+            NonStatic(door);
+            elevator.stops.Add(new Elevator.Stop { floorNumber = n, height = L.y, door = door.transform });
+
+            var call = Cube(go, "Bouton_Appel_" + n, new Vector3(ElevDoorX + 1.05f, L.y + 1.2f, ElevFrontZ + 0.13f), new Vector3(0.14f, 0.22f, 0.05f), Quaternion.identity, mButton, true, -1);
+            NonStatic(call);
+            var cb = call.AddComponent<ElevatorButton>();
+            cb.elevator = elevator; cb.floorNumber = n; cb.isCallButton = true;
+        }
+
+        // Cabine (part de l'étage 1, celui de la chambre du joueur)
+        var cab = new GameObject("Cabine").transform;
+        cab.SetParent(go, false);
+        cab.position = new Vector3(ElevRect.center.x, _levels[1].y, ElevRect.center.y);
+        var c = cab.position;
+        Cube(cab, "Plancher", c + new Vector3(0, -0.05f, 0), new Vector3(3.6f, 0.1f, 3.6f), Quaternion.identity, mCab, true, _layerGround);
+        Cube(cab, "Paroi_Fond", c + new Vector3(0, 1.25f, -1.76f), new Vector3(3.6f, 2.5f, 0.08f), Quaternion.identity, mCab, true, _layerWalls);
+        Cube(cab, "Paroi_Ouest", c + new Vector3(-1.76f, 1.25f, 0), new Vector3(0.08f, 2.5f, 3.6f), Quaternion.identity, mCab, true, _layerWalls);
+        Cube(cab, "Paroi_Est", c + new Vector3(1.76f, 1.25f, 0), new Vector3(0.08f, 2.5f, 3.6f), Quaternion.identity, mCab, true, _layerWalls);
+        Cube(cab, "Plafond_Cabine", c + new Vector3(0, 2.54f, 0), new Vector3(3.6f, 0.08f, 3.6f), Quaternion.identity, mCab, true, _layerWalls);
+        Cube(cab, "Facade_Gauche", c + new Vector3(-1.25f, 1.25f, 1.76f), new Vector3(1.1f, 2.5f, 0.08f), Quaternion.identity, mCab, true, _layerWalls);
+        Cube(cab, "Facade_Droite", c + new Vector3(1.25f, 1.25f, 1.76f), new Vector3(1.1f, 2.5f, 0.08f), Quaternion.identity, mCab, true, _layerWalls);
+
+        for (int i = 0; i < floors.Length; i++)
+        {
+            var b = Cube(cab, "Bouton_Etage_" + floors[i], c + new Vector3(1.7f, 1.65f - i * 0.2f, 1.0f), new Vector3(0.05f, 0.14f, 0.14f), Quaternion.identity, mButton, true, -1);
+            var eb = b.AddComponent<ElevatorButton>();
+            eb.elevator = elevator; eb.floorNumber = floors[i];
+        }
+
+        var lightGo = new GameObject("Lumiere_Cabine");
+        lightGo.transform.SetParent(cab, false);
+        lightGo.transform.position = c + new Vector3(0, 2.35f, 0);
+        var cabLight = lightGo.AddComponent<Light>();
+        cabLight.type = LightType.Point;
+        cabLight.color = new Color(1f, 0.9f, 0.75f);
+        cabLight.intensity = 1.4f;
+        cabLight.range = 4.5f;
+        NonStatic(cab.gameObject);
+
+        elevator.cab = cab;
+        elevator.cabLight = cabLight;
+        elevator.doorSlide = 1.35f; // la porte ouverte reste cachée dans la gaine
+        Marker(_levels[0], "Panne_Ascenseur (musique de panne)", new Vector3(ElevDoorX, 0f, ElevRect.yMax + 0.6f), Color.magenta);
+    }
+
+    // ───────────────────────── Tunnel d'aération (-2 → -3) ─────────────────────────
+    // Bouche d'aération cachée dans le mur sud du -2 → conduit étroit (1 m × 1,25 m, à parcourir accroupi)
+    // qui descend en pente, longe le sous-sol et ressort dans une impasse des tunnels du -3.
+    static void BuildVentTunnel(Transform root)
+    {
+        var up = _levels[-2];
+        var down = _levels[-3];
+        float xv = -HalfX + (_ventI + 0.5f) * Cell;
+        float xt = -HalfX + (VentExitI + 0.5f) * Cell;
+        float zFar = GridZMin - 12f;
+
+        var go = new GameObject("Tunnel_Aeration (-2 -> -3)").transform;
+        go.SetParent(root, false);
+        var m = Mat("Tunnel_Aeration", new Color(0.32f, 0.32f, 0.34f), 0.35f);
+        var mp = Mat("Meuble_" + up.number, Color.Lerp(up.wall, up.floor, 0.5f));
+
+        BuildDuct(go, new[]
+        {
+            new Vector3(xv, up.y, GridZMin - 0.1f),   // derrière la bouche d'aération du -2
+            new Vector3(xv, down.y, zFar),            // descente en pente
+            new Vector3(xt, down.y, zFar),            // le long du sous-sol
+            new Vector3(xt, down.y, GridZMin - 0.1f), // vers l'impasse du -3
+        }, 1f, 1.25f, m);
+
+        // Grille amovible (E) et camouflage
+        var grate = Cube(up.root, "Grille_Aeration (E pour retirer)", new Vector3(xv, up.y + 0.6f, GridZMin + 0.13f), new Vector3(1f, 1.2f, 0.05f),
+            Quaternion.identity, Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f), true, _layerWalls);
+        grate.AddComponent<VentGrate>();
+        NonStatic(grate);
+        Model(up, KSurvival + "barrel", new Vector3(xv - 1.05f, up.y, GridZMin + 0.55f), 0f, new Vector3(0.8f, 1.1f, 0.8f), mp);
+        Model(up, KSurvival + "box-large", new Vector3(xv + 1.15f, up.y, GridZMin + 0.7f), 15f, new Vector3(1f, 1f, 1f), mp);
+        Marker(up, "Bouche_Aeration_Cachee (vers -3)", new Vector3(xv, up.y, GridZMin + 1.2f), Color.magenta);
+
+        // Sortie au -3 : grille arrachée au sol
+        Cube(down.props, "Grille_Arrachee", new Vector3(xt + 0.6f, down.y + 0.03f, GridZMin + 0.8f), new Vector3(1f, 0.05f, 1.2f),
+            Quaternion.Euler(0, 25f, 0), Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f), false, -1);
+        Marker(down, "Sortie_Tunnel_Aeration", new Vector3(xt, down.y, GridZMin + 1.2f), Color.magenta);
+    }
+
+    // Conduit rectangulaire le long d'une polyligne (segments plats ou en pente).
+    static void BuildDuct(Transform p, Vector3[] pts, float w, float h, Material m)
+    {
+        for (int i = 0; i < pts.Length - 1; i++)
+        {
+            Vector3 a = pts[i], b = pts[i + 1], d = b - a;
+            float len = d.magnitude;
+            var rot = Quaternion.LookRotation(d / len, Vector3.up);
+            Vector3 fwd = rot * Vector3.forward, right = rot * Vector3.right, upv = rot * Vector3.up;
+            Vector3 dirH = new Vector3(d.x, 0, d.z).normalized;
+
+            // Coins : le mur extérieur est prolongé, le mur intérieur raccourci
+            bool turnStart = i > 0, turnEnd = i < pts.Length - 2;
+            bool rightTurnStart = turnStart && Vector3.Dot(dirH, Vector3.Cross(Vector3.up, Flat(pts[i] - pts[i - 1]))) > 0f;
+            bool rightTurnEnd = turnEnd && Vector3.Dot(Flat(pts[i + 2] - pts[i + 1]), Vector3.Cross(Vector3.up, dirH)) > 0f;
+            float ext = w * 0.5f + 0.15f;
+
+            float sExt = turnStart ? ext : 0f, eExt = turnEnd ? ext : 0f;
+            Vector3 mid = (a + b) * 0.5f + fwd * ((eExt - sExt) * 0.5f);
+            Cube(p, "Conduit_Sol", mid - upv * 0.1f, new Vector3(w + 0.3f, 0.2f, len + sExt + eExt), rot, m, true, _layerGround);
+            Cube(p, "Conduit_Plafond", mid + upv * (h + 0.1f), new Vector3(w + 0.3f, 0.2f, len + sExt + eExt), rot, m, true, _layerWalls);
+
+            foreach (int side in new[] { -1, 1 })
+            {
+                // Virage à droite : le côté gauche (-1) est l'extérieur du coin
+                float ws = !turnStart ? 0f : ((rightTurnStart ? side < 0 : side > 0) ? ext : -w * 0.5f);
+                float we = !turnEnd ? 0f : ((rightTurnEnd ? side < 0 : side > 0) ? ext : -w * 0.5f);
+                Vector3 c = (a + b) * 0.5f + fwd * ((we - ws) * 0.5f) + right * (side * (w * 0.5f + 0.075f)) + upv * (h * 0.5f);
+                Cube(p, "Conduit_Paroi", c, new Vector3(0.15f, h + 0.4f, len + ws + we), rot, m, true, _layerWalls);
+            }
+        }
+    }
+
+    static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z).normalized;
+
+    static void NonStatic(GameObject go)
+    {
+        foreach (var t in go.GetComponentsInChildren<Transform>(true))
+            GameObjectUtility.SetStaticEditorFlags(t.gameObject, 0);
     }
 
     // ───────────────────────── Acteurs, joueur, systèmes ─────────────────────────
@@ -1198,6 +1475,11 @@ public static class EchoesMapGenerator
 
             player.AddComponent<PlayerController>();
         }
+
+        // Interactions (touche E) : boutons d'ascenseur, grille d'aération, grille verrouillée…
+        var playerGo = GameObject.FindGameObjectWithTag("Player");
+        if (playerGo != null && playerGo.GetComponent<InteractionManager>() == null)
+            playerGo.AddComponent<InteractionManager>();
     }
 
     static void BakeNavMesh(Transform root)
