@@ -38,6 +38,15 @@ public class MainMenu : MonoBehaviour
     [SerializeField] private GameObject creditsPanel;
 
     private bool _isTransitioning = false;
+
+    /// Volume cible de la musique (réglage "Musique" des options).
+    private float MusicTarget => GameManager.Instance != null ? GameManager.Instance.MusicVolume : 1f;
+
+    /// Appelé par le panneau d'options quand le volume de la musique change.
+    public void RefreshMusicVolume()
+    {
+        if (musicPlayer != null && !_isTransitioning) musicPlayer.volume = MusicTarget;
+    }
     private int _lastTrackIndex = -1;
     private GameMode _currentPlayMode = GameMode.None;
 
@@ -119,7 +128,7 @@ public class MainMenu : MonoBehaviour
         Debug.Log($"[AUDIO] Lecture de : {tracks[index].name} (Index: {index})");
 
         // Fade-In sur 4 secondes
-        StartCoroutine(FadeAudio(musicPlayer, 0f, 1f, 4f));
+        StartCoroutine(FadeAudio(musicPlayer, 0f, MusicTarget, 4f));
     }
 
     private IEnumerator HandleMusicTransition()

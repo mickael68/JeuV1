@@ -146,7 +146,7 @@ public static class EchoesMenuBuilder
         // Sous-panneaux
         var rules = InfoPanel(root, "Panel_Regles", "Règles", RulesText, TextAlignmentOptions.TopLeft, out var rulesBack);
         var guide = InfoPanel(root, "Panel_Guide", "Guide", GuideText, TextAlignmentOptions.TopLeft, out var guideBack);
-        var options = InfoPanel(root, "Panel_Options", "Options", OptionsText, TextAlignmentOptions.TopLeft, out var optionsBack);
+        var options = OptionsPanelUI(root, out var optionsBack);
         var credits = InfoPanel(root, "Panel_Credits", "Crédits", CreditsText, TextAlignmentOptions.Top, out var creditsBack);
 
         // Confirmation pour quitter
@@ -359,7 +359,7 @@ public static class EchoesMenuBuilder
         "Lampe torche<pos=50%>F\n" +
         "Interagir<pos=50%>E\n" +
         "Pause<pos=50%>Échap\n\n" +
-        "<size=80%><color=#9E9A92>Sensibilité, champ de vision et vitesses se règlent dans le menu pause, en jeu.</color></size>";
+        "<size=80%><color=#9E9A92>En jeu, le menu pause (Échap) règle aussi les vitesses de déplacement.</color></size>";
 
     const string CreditsText =
         "<b>The Echoes Below</b>\nUn jeu de Mickaël Marco\n\n" +
@@ -507,6 +507,86 @@ public static class EchoesMenuBuilder
         back = MakeButton("Retour", box.transform, "Retour", 32, ButtonBg, TextAlignmentOptions.Center);
         Place((RectTransform)back.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(280, 64));
         return p.gameObject;
+    }
+
+    /// Panneau Options du menu principal : réglages à gauche, contrôles à droite.
+    static GameObject OptionsPanelUI(Transform root, out Button back)
+    {
+        var p = UI("Panel_Options", root);
+        Stretch(p);
+        var box = Img("Cadre", p, PanelCol);
+        Place(box.rectTransform, Center, Center, Vector2.zero, new Vector2(1250, 800));
+
+        var t = Text("Titre", box.transform, "Options", 58, TextAlignmentOptions.Top, Bone);
+        Place(t.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(1000, 80));
+        var line = Img("Trait", box.transform, new Color(Accent.r, Accent.g, Accent.b, 0.6f));
+        line.raycastTarget = false;
+        Place(line.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -128), new Vector2(160, 3));
+
+        // Colonne de gauche : réglages
+        string[] names = { "Volume général", "Musique", "Sensibilité de la souris", "Champ de vision" };
+        var sliders = new Slider[names.Length];
+        var values = new TextMeshProUGUI[names.Length];
+        for (int i = 0; i < names.Length; i++)
+        {
+            float y = -175 - i * 100;
+            var l = Text("Label_" + i, box.transform, names[i], 28, TextAlignmentOptions.Left, Bone);
+            Place(l.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y), new Vector2(460, 40));
+            values[i] = Text("Valeur_" + i, box.transform, "", 26, TextAlignmentOptions.Right, Accent);
+            Place(values[i].rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(440, y), new Vector2(160, 40));
+            sliders[i] = MakeSlider(box.transform);
+            Place((RectTransform)sliders[i].transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y - 50), new Vector2(520, 22));
+        }
+
+        // Plein écran
+        var fsLabel = Text("Label_PleinEcran", box.transform, "Plein écran", 28, TextAlignmentOptions.Left, Bone);
+        Place(fsLabel.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -575), new Vector2(400, 40));
+        var toggle = MakeToggle(box.transform);
+        Place((RectTransform)toggle.transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(560, -575), new Vector2(40, 40));
+
+        // Séparateur vertical
+        var sep = Img("Separateur", box.transform, new Color(1f, 1f, 1f, 0.08f));
+        sep.raycastTarget = false;
+        Place(sep.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(40, -170), new Vector2(2, 460));
+
+        // Colonne de droite : contrôles
+        var controls = Text("Controles", box.transform, OptionsText, 26, TextAlignmentOptions.TopLeft, new Color(0.82f, 0.80f, 0.76f));
+        controls.lineSpacing = 6;
+        Place(controls.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-70, -165), new Vector2(520, 500));
+
+        back = MakeButton("Retour", box.transform, "Retour", 32, ButtonBg, TextAlignmentOptions.Center);
+        Place((RectTransform)back.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(280, 64));
+
+        var op = p.gameObject.AddComponent<OptionsPanel>();
+        var so = new SerializedObject(op);
+        Set(so, "masterVolumeSlider", sliders[0]);
+        Set(so, "musicVolumeSlider", sliders[1]);
+        Set(so, "sensitivitySlider", sliders[2]);
+        Set(so, "fovSlider", sliders[3]);
+        Set(so, "fullscreenToggle", toggle);
+        Set(so, "masterVolumeValue", values[0]);
+        Set(so, "musicVolumeValue", values[1]);
+        Set(so, "sensitivityValue", values[2]);
+        Set(so, "fovValue", values[3]);
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        p.gameObject.SetActive(false);
+        return p.gameObject;
+    }
+
+    static Toggle MakeToggle(Transform parent)
+    {
+        var bg = Img("PleinEcran", parent, new Color(1f, 1f, 1f, 0.12f));
+        var toggle = bg.gameObject.AddComponent<Toggle>();
+        toggle.targetGraphic = bg;
+        var check = Img("Coche", bg.transform, Accent);
+        check.raycastTarget = false;
+        Stretch(check.rectTransform);
+        check.rectTransform.offsetMin = new Vector2(8, 8);
+        check.rectTransform.offsetMax = new Vector2(-8, -8);
+        toggle.graphic = check;
+        toggle.isOn = true;
+        return toggle;
     }
 
     static void Set(SerializedObject so, string prop, Object value)

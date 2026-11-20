@@ -95,7 +95,11 @@ public class PauseMenu : MonoBehaviour
         slider.minValue = min;
         slider.maxValue = max;
         slider.value = defaultValue;
-        slider.onValueChanged.AddListener(v => onChanged(v));
+        slider.onValueChanged.AddListener(v =>
+        {
+            onChanged(v);
+            if (GameManager.Instance != null) GameManager.Instance.SaveSettings();
+        });
     }
 
     private void ApplySettingsToPlayer()
