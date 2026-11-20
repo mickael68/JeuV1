@@ -39,6 +39,9 @@ public class PauseMenu : MonoBehaviour
 
     public bool IsOpen { get; private set; } = false;
 
+    private int _openedFrame = -1;
+    private bool _slidersReady;
+
     private void Awake()
     {
         // Ajouter des CanvasGroups pour les animations de fade
@@ -54,16 +57,15 @@ public class PauseMenu : MonoBehaviour
         if (quitYesButton != null) quitYesButton.onClick.AddListener(ConfirmQuit);
         if (quitNoButton != null) quitNoButton.onClick.AddListener(() => TransitionToPanel(quitPanel, mainPanel));
 
-        // Setup sliders
-        SetupSliders();
-
-        // Désactivé au départ
+        // Désactivé au départ (les curseurs sont initialisés à la première ouverture,
+        // quand le GameManager existe à coup sûr)
         gameObject.SetActive(false);
     }
 
     private void Update()
     {
-        if (IsOpen && Input.GetKeyDown(KeyCode.Escape))
+        // Ignore l'Échap qui vient d'ouvrir le menu (même image)
+        if (IsOpen && Time.frameCount != _openedFrame && Input.GetKeyDown(KeyCode.Escape))
         {
             if (optionsPanel.activeSelf)
                 TransitionToPanel(optionsPanel, mainPanel);
@@ -77,7 +79,8 @@ public class PauseMenu : MonoBehaviour
     private void SetupSliders()
     {
         var gm = GameManager.Instance;
-        if (gm == null) return;
+        if (gm == null || _slidersReady) return;
+        _slidersReady = true;
 
         SetupSlider(sensitivitySlider, 0.5f, 10f, gm.MouseSensitivity, v => { gm.MouseSensitivity = v; ApplySettingsToPlayer(); });
         SetupSlider(fovSlider, 50f, 90f, gm.NormalFov, v => { gm.NormalFov = v; ApplySettingsToPlayer(); });
@@ -104,6 +107,8 @@ public class PauseMenu : MonoBehaviour
     public void OpenMenu()
     {
         IsOpen = true;
+        _openedFrame = Time.frameCount;
+        SetupSliders();
         gameObject.SetActive(true);
         mainPanel.SetActive(true);
         optionsPanel.SetActive(false);

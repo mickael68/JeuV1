@@ -23,6 +23,13 @@ public class InteractionManager : MonoBehaviour
 
     private void Update()
     {
+        // Pas d'interaction pendant la pause (souris libérée)
+        if (Cursor.lockState != CursorLockMode.Locked)
+        {
+            if (interactionLabel != null) interactionLabel.gameObject.SetActive(false);
+            return;
+        }
+
         // Raycast depuis le centre de l'écran
         Ray ray = _camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
 

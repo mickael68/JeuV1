@@ -128,7 +128,9 @@ public class Elevator : MonoBehaviour
 
     private bool ShouldBreakDown()
     {
-        if (GameManager.Instance == null) return breakdownWithoutGameManager;
+        // Scène lancée directement (pas de GameManager, ou mode non choisi depuis le menu) : réglage de test
+        if (GameManager.Instance == null || GameManager.Instance.CurrentMode == GameMode.None)
+            return breakdownWithoutGameManager;
         return GameManager.Instance.CurrentMode == GameMode.Story;
     }
 

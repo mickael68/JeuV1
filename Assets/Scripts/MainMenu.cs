@@ -224,6 +224,9 @@ public class MainMenu : MonoBehaviour
         // Réapparaître le menu principal
         mainMenuGroup.alpha = 0f;
         yield return StartCoroutine(FadeCanvasGroupTo(mainMenuGroup, 1f, 0.4f));
+        // Les boutons avaient été désactivés à l'ouverture du sous-panneau
+        mainMenuGroup.interactable = true;
+        mainMenuGroup.blocksRaycasts = true;
     }
 
     private void ShowQuitConfirmation()
