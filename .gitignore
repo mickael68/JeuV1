@@ -59,3 +59,12 @@ Godot_*/
 
 # Captures de vérification (EchoesSnapshot)
 /Captures/
+
+# Packs de l'Asset Store : licence Unity (pas de redistribution dans un dépôt public)
+/Assets/AltonGames/
+/Assets/AltonGames.meta
+/Assets/Tree9/
+/Assets/Tree9.meta
+# Scène de secours créée par Unity après une fermeture inattendue
+/Assets/_Recovery/
+/Assets/_Recovery.meta

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Unity.AI.Navigation;
+using UnityEditor;
 using UnityEngine;
 
 /// <summary>
@@ -142,7 +143,7 @@ public static partial class EchoesMapGenerator
         string[] trees = { KSurvival + "tree-autumn-tall", KSurvival + "tree-autumn", KSurvival + "tree-tall", KSurvival + "tree", KGraveyard + "pine", KGraveyard + "pine-crooked" };
         var keepOut = Rect.MinMaxRect(-HalfX - 8f, CorrS - RoomDepth - 4f, HalfX + 4f, CorrN + RoomDepth + 4f);
         int placed = 0;
-        for (int tries = 0; tries < 600 && placed < 90; tries++)
+        for (int tries = 0; tries < 600 && placed < 45; tries++) // arbres réalistes : coûteux, on en met moins
         {
             var p = new Vector2(Rand(-GroundX + 3f, GroundX - 3f), Rand(GroundZ0 + 3f, GroundZ1 - 3f));
             bool inYard = YardRect.Contains(p);
@@ -152,8 +153,38 @@ public static partial class EchoesMapGenerator
             if (Mathf.Abs(p.x - YardRect.xMin) < 1.5f || Mathf.Abs(p.x - YardRect.xMax) < 1.5f ||
                 Mathf.Abs(p.y - YardRect.yMin) < 1.5f || Mathf.Abs(p.y - YardRect.yMax) < 1.5f) continue; // pas sur la clôture
             float hgt = Rand(6f, 11f);
-            Model(X, trees[_rng.Next(trees.Length)], new Vector3(p.x, gy, p.y), Rand(0f, 360f), new Vector3(hgt * 0.55f, hgt, hgt * 0.55f), mFence, inYard);
+            var tree = Model(X, trees[_rng.Next(trees.Length)], new Vector3(p.x, gy, p.y), Rand(0f, 360f), new Vector3(hgt * 0.8f, hgt, hgt * 0.8f), mFence, false);
+            SetupRealTree(tree, inYard);
             placed++;
+        }
+
+        // Buissons le long des façades et de la clôture
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(BushLarge) != null)
+        {
+            for (int i = 0; i < 34; i++)
+            {
+                Vector2 p;
+                if (i < 16) // pied de façade (sauf devant la porte)
+                {
+                    float t = Rand(0f, 1f);
+                    int side = i % 4;
+                    p = side == 0 ? new Vector2(Mathf.Lerp(-HalfX, HalfX, t), CorrS - RoomDepth - 1.2f)
+                      : side == 1 ? new Vector2(Mathf.Lerp(-HalfX, HalfX, t), CorrN + RoomDepth + 1.2f)
+                      : side == 2 ? new Vector2(HalfX + 1.2f, Mathf.Lerp(CorrS - RoomDepth, CorrN + RoomDepth, t))
+                                  : new Vector2(-HalfX - 1.2f, Mathf.Lerp(CorrN + 3f, CorrN + RoomDepth, t));
+                    if (side == 2 && Mathf.Abs(p.y - ExitZ) < 3f) continue;
+                }
+                else // le long de la clôture, côté cour
+                {
+                    int side = i % 3;
+                    p = side == 0 ? new Vector2(Rand(YardRect.xMin + 2f, YardRect.xMax - 2f), YardRect.yMin + 1.2f)
+                      : side == 1 ? new Vector2(Rand(YardRect.xMin + 2f, YardRect.xMax - 2f), YardRect.yMax - 1.2f)
+                                  : new Vector2(YardRect.xMin + 1.2f, Rand(YardRect.yMin + 2f, YardRect.yMax - 2f));
+                }
+                float bs = Rand(1.0f, 1.8f);
+                var bush = InstantiateAt(X, _rng.NextDouble() < 0.5 ? BushLarge : BushSmall, new Vector3(p.x, gy, p.y), Rand(0f, 360f), new Vector3(bs * 1.4f, bs, bs * 1.4f));
+                SetupRealTree(bush, false);
+            }
         }
         // Rochers et souches pour casser la pelouse
         string[] rocks = { KSurvival + "rock-a", KSurvival + "rock-b", KSurvival + "rock-flat-grass", KSurvival + "tree-log-small", KSurvival + "tree-trunk" };
@@ -191,9 +222,7 @@ public static partial class EchoesMapGenerator
             float c = (alongX ? a.x : a.z) + (i + 0.5f) * step;
             if (gap.HasValue && !alongX && c > gap.Value.x - step * 0.5f && c < gap.Value.y + step * 0.5f) continue;
             var pos = alongX ? new Vector3(c, a.y, a.z) : new Vector3(a.x, a.y, c);
-            var fit = alongX ? new Vector3(step, 1.8f, 0.25f) : new Vector3(0.25f, 1.8f, step);
-            string model = _rng.NextDouble() < 0.12 ? "iron-fence-damaged" : "iron-fence";
-            Model(X, KGraveyard + model, pos, 0f, fit, fallback, false);
+            FenceSegment(X, pos, alongX, step, fallback); // grille en fer forgé (mesh généré)
         }
     }
 

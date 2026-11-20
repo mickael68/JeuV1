@@ -160,6 +160,11 @@ public static partial class EchoesMapGenerator
         var LDecor = new LevelDef { number = X.number, y = gy, root = parent, props = Child(parent, "Foret"), markers = X.markers };
         string[] trees = { KGraveyard + "pine", KGraveyard + "pine-crooked", KSurvival + "tree-tall", KSurvival + "tree-autumn-tall", KGraveyard + "pine-fall" };
         var fallback = Mat("Decor_Collines", Color.white);
+        // Forêt lointaine : silhouettes légères (modèles simples, teinte sombre unie) fondues dans le brouillard.
+        // Les arbres réalistes seraient trop lourds par centaines.
+        var silhouette = Mat("Decor_Silhouette_Arbres", new Color(0.09f, 0.12f, 0.08f), 0.05f);
+        silhouette.enableInstancing = true;
+        _skipRealistic = true;
         int placed = 0;
         for (int tries = 0; tries < 1200 && placed < 220; tries++)
         {
@@ -169,9 +174,17 @@ public static partial class EchoesMapGenerator
             var p = new Vector3(Mathf.Cos(a) * r, HillHeight(deg, r, gy) - 0.3f, Mathf.Sin(a) * r);
             float h = Rand(9f, 17f) * Mathf.Lerp(1f, 1.6f, (r - 74f) / 156f);
             var t = Model(LDecor, trees[_rng.Next(trees.Length)], p, Rand(0f, 360f), new Vector3(h * 0.5f, h, h * 0.5f), fallback, false);
-            if (t != null) foreach (var rend in t.GetComponentsInChildren<Renderer>()) rend.shadowCastingMode = ShadowCastingMode.Off;
+            if (t != null)
+                foreach (var rend in t.GetComponentsInChildren<Renderer>())
+                {
+                    rend.shadowCastingMode = ShadowCastingMode.Off;
+                    var mats = rend.sharedMaterials;
+                    for (int k = 0; k < mats.Length; k++) mats[k] = silhouette;
+                    rend.sharedMaterials = mats;
+                }
             placed++;
         }
+        _skipRealistic = false;
 
         // 3) Petite ville au fond de la vallée (fenêtres éclairées la nuit)
         var town = Child(parent, "Ville");

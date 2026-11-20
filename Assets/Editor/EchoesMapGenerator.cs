@@ -177,6 +177,7 @@ public static partial class EchoesMapGenerator
         _mats = new Dictionary<string, Material>();
         _models = new Dictionary<string, GameObject>();
         ResetBoxMeshes();
+        _skipRealistic = false; _realisticPrepared = false;
         _rng = new System.Random(Seed);
         _layerGround = Layer("Ground"); _layerWalls = Layer("Walls");
         _layerFurniture = Layer("Furniture"); _layerNpc = Layer("NPC");
@@ -464,7 +465,8 @@ public static partial class EchoesMapGenerator
         float sx = mirror ? -1f : 1f;
         float y = L.y;
 
-        Furn(L, KFurniture + "bedSingle", new Vector3(sideL + sx * 0.6f, y, back + s * 1.15f), face, new Vector3(1f, 0.7f, 2.1f), mp, wreck);
+        var bed = Furn(L, KFurniture + "bedSingle", new Vector3(sideL + sx * 0.6f, y, back + s * 1.15f), face, new Vector3(1f, 1.1f, 2.1f), mp, wreck);
+        if (bed != null && !wreck && bed.name.StartsWith("old_bed_frame")) AddMattress(L, bed);
         Furn(L, KFurniture + "sideTable", new Vector3(sideL + sx * 1.45f, y, back + s * 0.35f), face, new Vector3(0.5f, 0.6f, 0.45f), mp, wreck);
 
         var deskPos = new Vector3(sideR - sx * 0.4f, y, back + s * 1.0f);
@@ -510,8 +512,8 @@ public static partial class EchoesMapGenerator
             float sz = Rand(0.45f, 0.8f);
             var p = new Vector3(Rand(r.xMin + 0.5f, r.xMax - 0.5f), L.y, Rand(r.yMin + 0.5f, r.yMax - 0.5f));
             var box = Model(L, boxes[_rng.Next(boxes.Length)], p, Rand(0f, 360f), new Vector3(sz, sz, sz), mp);
-            if (box != null && _rng.NextDouble() < 0.3) // carton empilé
-                Model(L, boxes[_rng.Next(boxes.Length)], p + Vector3.up * sz * 0.95f, Rand(0f, 360f), new Vector3(sz * 0.8f, sz * 0.8f, sz * 0.8f), mp);
+            if (box != null && _rng.NextDouble() < 0.3 && TryBounds(box, out var bb)) // carton empilé, posé sur le premier
+                Model(L, boxes[_rng.Next(boxes.Length)], new Vector3(bb.center.x, bb.max.y, bb.center.z), Rand(0f, 360f), new Vector3(sz * 0.8f, sz * 0.8f, sz * 0.8f), mp);
         }
     }
 
@@ -519,12 +521,19 @@ public static partial class EchoesMapGenerator
     // Pose le modèle au sol en floorPos ; s'il manque, un cube de la même taille le remplace.
     static GameObject Model(LevelDef L, string path, Vector3 floorPos, float rotY, Vector3 fit, Material fallback, bool collider = true)
     {
-        var asset = LoadModel(path);
+        // Équivalent réaliste (Poly Haven) si disponible
+        var real = LoadRealistic(path, out var phId, out var skip);
+        if (skip) return null;
+        if (real != null && RealisticYaw.TryGetValue(phId, out var yawFix)) rotY += yawFix;
+        var asset = real != null ? real : LoadModel(path);
+        if (real != null) path = phId;
         if (asset == null)
             return Cube(L.props, Path.GetFileName(path), floorPos + Vector3.up * fit.y * 0.5f, fit, Quaternion.Euler(0, rotY, 0), fallback, collider, _layerFurniture);
 
         var go = (GameObject)PrefabUtility.InstantiatePrefab(asset, L.props);
-        go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+        // Garde la rotation d'origine du modèle (les FBX venant de Blender sont souvent tournés de -90° en X)
+        var baseRot = asset.transform.localRotation;
+        go.transform.SetPositionAndRotation(Vector3.zero, baseRot);
         go.transform.localScale = Vector3.one;
         if (!TryBounds(go, out var b))
         {
@@ -547,7 +556,7 @@ public static partial class EchoesMapGenerator
 
         go.name = Path.GetFileName(path);
         go.transform.localScale = Vector3.one * scale;
-        go.transform.rotation = Quaternion.Euler(0, rotY, 0);
+        go.transform.rotation = Quaternion.Euler(0, rotY, 0) * baseRot;
         Ground(go, floorPos);
 
         if (collider)
