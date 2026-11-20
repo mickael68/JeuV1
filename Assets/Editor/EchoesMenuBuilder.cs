@@ -277,9 +277,13 @@ public static class EchoesMenuBuilder
         var opts = UI("Pause_Options", pause.transform);
         Stretch(opts);
         var oBox = Img("Cadre", opts, PanelCol);
-        Place(oBox.rectTransform, Center, Center, Vector2.zero, new Vector2(900, 740));
+        Place(oBox.rectTransform, Center, Center, Vector2.zero, new Vector2(1250, 760));
         var oTitle = Text("Titre", oBox.transform, "Options", 54, TextAlignmentOptions.Top, Bone);
         Place(oTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -35), new Vector2(800, 75));
+        var oSep = Img("Separateur", oBox.transform, new Color(1f, 1f, 1f, 0.08f));
+        oSep.raycastTarget = false;
+        Place(oSep.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(40, -130), new Vector2(2, 500));
+        KeyBindingsBlock(oBox.transform, new Vector2(-70, -125), new Vector2(520, 520));
 
         string[] sliderNames = { "Sensibilité de la souris", "Champ de vision", "Champ de vision en course", "Vitesse de marche", "Vitesse de course" };
         var sliders = new Slider[sliderNames.Length];
@@ -287,9 +291,9 @@ public static class EchoesMenuBuilder
         {
             float y = -140 - i * 98;
             var l = Text("Label_" + i, oBox.transform, sliderNames[i], 28, TextAlignmentOptions.Left, Bone);
-            Place(l.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, y), new Vector2(740, 40));
+            Place(l.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y), new Vector2(520, 40));
             sliders[i] = MakeSlider(oBox.transform);
-            Place((RectTransform)sliders[i].transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, y - 48), new Vector2(740, 22));
+            Place((RectTransform)sliders[i].transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y - 48), new Vector2(520, 22));
         }
         var oBack = MakeButton("Retour", oBox.transform, "Retour", 32, ButtonBg, TextAlignmentOptions.Center);
         Place((RectTransform)oBack.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 35), new Vector2(280, 64));
@@ -348,18 +352,6 @@ public static class EchoesMenuBuilder
         "•  Les passages bas, les trous et les conduits se franchissent accroupi.\n\n" +
         "•  Fouille partout : tous les chemins ne sont pas à la vue de tous.\n\n" +
         "•  Si une voix familière t'appelle depuis l'obscurité… ce n'est peut-être pas elle.";
-
-    const string OptionsText =
-        "<b>Contrôles</b>\n\n" +
-        "Se déplacer<pos=50%>W A S D / flèches\n" +
-        "Regarder<pos=50%>Souris\n" +
-        "Courir<pos=50%>Maj gauche\n" +
-        "Sauter<pos=50%>Espace\n" +
-        "S'accroupir<pos=50%>Ctrl gauche / C\n" +
-        "Lampe torche<pos=50%>F\n" +
-        "Interagir<pos=50%>E\n" +
-        "Pause<pos=50%>Échap\n\n" +
-        "<size=80%><color=#9E9A92>En jeu, le menu pause (Échap) règle aussi les vitesses de déplacement.</color></size>";
 
     const string CreditsText =
         "<b>The Echoes Below</b>\nUn jeu de Mickaël Marco\n\n" +
@@ -549,10 +541,8 @@ public static class EchoesMenuBuilder
         sep.raycastTarget = false;
         Place(sep.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(40, -170), new Vector2(2, 460));
 
-        // Colonne de droite : contrôles
-        var controls = Text("Controles", box.transform, OptionsText, 26, TextAlignmentOptions.TopLeft, new Color(0.82f, 0.80f, 0.76f));
-        controls.lineSpacing = 6;
-        Place(controls.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-70, -165), new Vector2(520, 500));
+        // Colonne de droite : touches personnalisables
+        KeyBindingsBlock(box.transform, new Vector2(-70, -160), new Vector2(520, 520));
 
         back = MakeButton("Retour", box.transform, "Retour", 32, ButtonBg, TextAlignmentOptions.Center);
         Place((RectTransform)back.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(280, 64));
@@ -572,6 +562,17 @@ public static class EchoesMenuBuilder
 
         p.gameObject.SetActive(false);
         return p.gameObject;
+    }
+
+    /// Bloc "Touches" (construit à l'exécution par KeyBindingsUI), ancré en haut à droite du cadre.
+    static void KeyBindingsBlock(Transform box, Vector2 pos, Vector2 size)
+    {
+        var rt = UI("Touches", box);
+        Place(rt, new Vector2(1, 1), new Vector2(1, 1), pos, size);
+        var ui = rt.gameObject.AddComponent<KeyBindingsUI>();
+        var so = new SerializedObject(ui);
+        Set(so, "font", _font);
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static Toggle MakeToggle(Transform parent)

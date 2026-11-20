@@ -65,7 +65,7 @@ public class PauseMenu : MonoBehaviour
     private void Update()
     {
         // Ignore l'Échap qui vient d'ouvrir le menu (même image)
-        if (IsOpen && Time.frameCount != _openedFrame && Input.GetKeyDown(KeyCode.Escape))
+        if (IsOpen && !KeyBindingsUI.Listening && Time.frameCount != _openedFrame && Input.GetKeyDown(KeyCode.Escape))
         {
             if (optionsPanel.activeSelf)
                 TransitionToPanel(optionsPanel, mainPanel);

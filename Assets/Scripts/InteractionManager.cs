@@ -42,12 +42,12 @@ public class InteractionManager : MonoBehaviour
             {
                 if (interactionLabel != null)
                 {
-                    interactionLabel.text = $"[E] {interactable.GetInteractText()}";
+                    interactionLabel.text = $"[{KeyBindings.KeyName(KeyBindings.Get(GameAction.Interact))}] {interactable.GetInteractText()}";
                     interactionLabel.gameObject.SetActive(true);
                 }
 
                 // Input System : touche E pour interagir
-                if (Input.GetKeyDown(KeyCode.E))
+                if (KeyBindings.Down(GameAction.Interact))
                 {
                     interactable.Interact();
                 }

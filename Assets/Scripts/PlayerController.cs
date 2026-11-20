@@ -175,7 +175,7 @@ public class PlayerController : MonoBehaviour
 
     private void HandleFlashlight()
     {
-        if (_flashlight != null && Input.GetKeyDown(KeyCode.F))
+        if (_flashlight != null && KeyBindings.Down(GameAction.Flashlight))
         {
             _flashlight.enabled = !_flashlight.enabled;
             Debug.Log($"[Player] Lampe torche : {(_flashlight.enabled ? "ON" : "OFF")}");
@@ -202,19 +202,19 @@ public class PlayerController : MonoBehaviour
         UpdateCrouch(dt);
 
         // ── Saut ──
-        if (Input.GetKey(KeyCode.Space) && _controller.isGrounded && !_isCrouching)
+        if (KeyBindings.Held(GameAction.Jump) && _controller.isGrounded && !_isCrouching)
         {
             _velocity.y = jumpForce;
         }
 
         // ── Sprint ──
-        bool isSprinting = Input.GetKey(KeyCode.LeftShift) && _controller.isGrounded && !_isCrouching;
+        bool isSprinting = KeyBindings.Held(GameAction.Sprint) && _controller.isGrounded && !_isCrouching;
         float targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
         if (_isCrouching) targetSpeed *= crouchSpeedMultiplier;
 
         // ── Direction ──
-        float inputX = Input.GetAxisRaw("Horizontal"); // A/D
-        float inputZ = Input.GetAxisRaw("Vertical");   // W/S
+        float inputX = KeyBindings.Axis(GameAction.Left, GameAction.Right, KeyCode.LeftArrow, KeyCode.RightArrow);
+        float inputZ = KeyBindings.Axis(GameAction.Backward, GameAction.Forward, KeyCode.DownArrow, KeyCode.UpArrow);
         Vector3 direction = (transform.right * inputX + transform.forward * inputZ).normalized;
 
         // ── Multiplicateur directionnel ──
@@ -268,7 +268,7 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateCrouch(float dt)
     {
-        bool wantsCrouch = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C);
+        bool wantsCrouch = KeyBindings.Held(GameAction.Crouch);
         if (wantsCrouch) _isCrouching = true;
         else if (_isCrouching && CanStandUp()) _isCrouching = false; // reste accroupi sous un plafond bas
 
