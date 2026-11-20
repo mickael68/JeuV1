@@ -91,6 +91,18 @@ public static partial class EchoesMapGenerator
         return m;
     }
 
+    /// Rend un meuble utilisable comme siège (E pour s'asseoir / se lever).
+    static void AddSeat(GameObject go, float height, float facingYaw, Vector3 offset, string label)
+    {
+        if (go == null) return;
+        if (go.GetComponentInChildren<Collider>() == null) return;
+        var seat = go.AddComponent<Seat>();
+        seat.seatHeight = height;
+        seat.facingYaw = facingYaw;
+        seat.offset = offset;
+        seat.label = label;
+    }
+
     // ───────────────────────── Aménagement d'un studio ─────────────────────────
 
     /// Pose un meuble du Mega Pack (au hasard parmi "options") ; sinon le modèle de repli (Kenney → Poly Haven).
@@ -100,7 +112,7 @@ public static partial class EchoesMapGenerator
         string path = Mega + pick + ".prefab";
         if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
         {
-            if (MegaYaw.TryGetValue(pick, out var fix)) rotY += fix;
+            rotY += MegaYaw.TryGetValue(pick, out var fix) ? fix : 180f; // les meubles du pack regardent vers -Z
             var go = InstantiateAt(L, path, floorPos, rotY, fit);
             if (go != null && collider && go.GetComponentInChildren<Collider>() == null && TryBounds(go, out var b))
             {
@@ -130,15 +142,17 @@ public static partial class EchoesMapGenerator
         float faceRight = face + 90f * sx * s;        // dos au mur de gauche, face vers la droite
         float faceLeft = face - 90f * sx * s;         // dos au mur de droite
 
-        // Lit double, tête contre le mur du fond, le long du mur de gauche
-        Piece(L, MegaBeds, KFurniture + "bedSingle", P(0.85f, 1.05f), face, new Vector3(1.6f, 1.1f, 2.15f), mp);
+        // Lit double, tête contre le mur du fond, le long du mur de gauche (on s'assoit au bord, face à la pièce)
+        var bed = Piece(L, MegaBeds, KFurniture + "bedSingle", P(0.85f, 1.05f), face, new Vector3(1.6f, 1.1f, 2.15f), mp);
+        AddSeat(bed, 0.5f, faceRight, new Vector3(sx * 0.45f, 0f, 0f), "S'asseoir sur le lit");
         Piece(L, MegaNightstands, KFurniture + "sideTable", P(1.95f, 0.25f), face, new Vector3(0.5f, 0.6f, 0.45f), mp);
 
         // Bureau contre le mur de droite + chaise de bureau
         var desk = Piece(L, MegaDesks, KFurniture + "desk", P(3.55f, 1.2f), faceLeft, new Vector3(0.7f, 0.78f, 1.4f), mp);
         if (desk != null && deskOnCeiling)
             desk.transform.RotateAround(new Vector3(P(3.55f, 1.2f).x, y + L.h * 0.5f, P(3.55f, 1.2f).z), Vector3.right, 180f);
-        Piece(L, MegaChairs, KFurniture + "chairDesk", P(2.85f, 1.2f), faceRight, new Vector3(0.65f, 1.1f, 0.65f), mp);
+        var chair = Piece(L, MegaChairs, KFurniture + "chairDesk", P(2.85f, 1.2f), faceRight, new Vector3(0.65f, 1.1f, 0.65f), mp);
+        AddSeat(chair, 0.48f, faceRight, Vector3.zero, "S'asseoir");
 
         // Grande armoire contre le mur de droite, côté couloir
         Piece(L, MegaClosets, KFurniture + "bookcaseClosedDoors", P(3.65f, 3.6f), faceLeft, new Vector3(0.62f, 2.1f, 1.6f), mp);
@@ -149,9 +163,7 @@ public static partial class EchoesMapGenerator
         Piece(L, MegaFridges, null, P(0.35f, 4.6f), faceRight, new Vector3(0.66f, 1.75f, 0.66f), mp);
         Piece(L, MegaMicrowaves, null, P(0.3f, 3.25f, 0.9f), faceRight, new Vector3(0.36f, 0.3f, 0.5f), mp, false);
 
-        // Fauteuil (un studio sur deux) et poubelle
-        if (!playerRoom && _rng.NextDouble() < 0.5) // pas dans la chambre du joueur (point d'apparition)
-            Piece(L, MegaArmchairs, null, P(2.2f, 2.9f), face + Rand(150f, 210f), new Vector3(0.85f, 0.9f, 0.85f), mp);
+        // Poubelle sous le bureau (pièce dégagée au centre)
         if (_rng.NextDouble() < 0.6)
             Model(L, KFurniture + "trashcan", P(3.6f, 2.15f), face, new Vector3(0.35f, 0.5f, 0.35f), mp, false);
     }

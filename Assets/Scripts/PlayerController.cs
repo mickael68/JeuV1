@@ -69,6 +69,50 @@ public class PlayerController : MonoBehaviour
 
     private PauseMenu _pauseMenu;
 
+    // ── Assis (chaises, lits) ──
+    public static PlayerController Instance { get; private set; }
+    public bool IsSeated { get; private set; }
+    private const float SeatedEyeHeight = 0.75f; // yeux au-dessus de l'assise
+    private Vector3 _standPosition;
+    private int _seatFrame = -1;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
+    /// S'asseoir : le joueur est posé sur le point d'assise, ne se déplace plus, peut regarder autour.
+    public void SitOn(Seat seat)
+    {
+        if (IsSeated || seat == null) return;
+        if (_isCrouching) return;
+        _standPosition = transform.position;
+        _controller.enabled = false;
+        IsSeated = true;
+        _seatFrame = Time.frameCount;
+        _velocity = Vector3.zero;
+        transform.position = seat.SeatPoint;
+        transform.rotation = Quaternion.Euler(0f, seat.facingYaw, 0f);
+        _rotationX = 10f;
+        _defaultCameraY = SeatedEyeHeight;
+        var cam = _camera.transform.localPosition;
+        cam.y = SeatedEyeHeight;
+        _camera.transform.localPosition = cam;
+    }
+
+    /// Se lever : retour à l'endroit d'où l'on s'est assis.
+    public void StandUp()
+    {
+        if (!IsSeated || Time.frameCount == _seatFrame) return;
+        IsSeated = false;
+        transform.position = _standPosition;
+        _controller.enabled = true;
+        _defaultCameraY = _standCameraY;
+        var cam = _camera.transform.localPosition;
+        cam.y = _standCameraY;
+        _camera.transform.localPosition = cam;
+    }
+
     private void Start()
     {
         _controller = GetComponent<CharacterController>();
@@ -140,11 +184,16 @@ public class PlayerController : MonoBehaviour
 
         HandleMouseLook();
         HandleFlashlight();
+
+        // Assis : Espace (ou un déplacement) pour se lever ; E est géré par l'interaction
+        if (IsSeated && Time.frameCount != _seatFrame &&
+            (KeyBindings.Down(GameAction.Jump) || KeyBindings.Down(GameAction.Forward) || KeyBindings.Down(GameAction.Backward)))
+            StandUp();
     }
 
     private void FixedUpdate()
     {
-        if (Cursor.lockState != CursorLockMode.Locked) return;
+        if (Cursor.lockState != CursorLockMode.Locked || IsSeated) return;
         HandleMovement();
     }
 

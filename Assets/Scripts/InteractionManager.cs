@@ -30,6 +30,19 @@ public class InteractionManager : MonoBehaviour
             return;
         }
 
+        // Assis : E pour se lever, où que l'on regarde
+        var player = PlayerController.Instance;
+        if (player != null && player.IsSeated)
+        {
+            if (interactionLabel != null)
+            {
+                interactionLabel.text = $"[{KeyBindings.KeyName(KeyBindings.Get(GameAction.Interact))}] Se lever";
+                interactionLabel.gameObject.SetActive(true);
+            }
+            if (KeyBindings.Down(GameAction.Interact)) player.StandUp();
+            return;
+        }
+
         // Raycast depuis le centre de l'écran
         Ray ray = _camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
 

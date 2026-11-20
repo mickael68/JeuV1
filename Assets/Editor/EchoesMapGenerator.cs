@@ -1648,6 +1648,8 @@ public static partial class EchoesMapGenerator
         go.transform.localScale = Vector3.one * 0.5f;
         Object.DestroyImmediate(go.GetComponent<Collider>());
         go.GetComponent<Renderer>().sharedMaterial = Mat("Marqueur_" + ColorUtility.ToHtmlStringRGB(c), c);
+        go.AddComponent<EditorMarker>(); // visible dans l'éditeur, caché en jeu
+        go.tag = "EditorOnly";           // et absent des builds
         if (L.markers.GetComponent<NavMeshModifier>() == null)
             L.markers.gameObject.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
         if (name == "Chambre_Joueur") go.name = "Chambre_Joueur"; // retrouvé par nom pour placer le joueur
