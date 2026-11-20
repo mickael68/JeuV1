@@ -18,7 +18,7 @@ using UnityEngine.SceneManagement;
 /// Les cages d'escalier alternent Est / Ouest pour obliger à traverser chaque étage.
 /// Menu : The Echoes Below > Générer la map (greybox). Relancer régénère uniquement "ECHOES_MAP".
 /// </summary>
-public static class EchoesMapGenerator
+public static partial class EchoesMapGenerator
 {
     // ───────────────────────── Réglages ─────────────────────────
     const string ScenePath = "Assets/Scenes/Main.unity";
@@ -176,6 +176,7 @@ public static class EchoesMapGenerator
 
         _mats = new Dictionary<string, Material>();
         _models = new Dictionary<string, GameObject>();
+        ResetBoxMeshes();
         _rng = new System.Random(Seed);
         _layerGround = Layer("Ground"); _layerWalls = Layer("Walls");
         _layerFurniture = Layer("Furniture"); _layerNpc = Layer("NPC");
@@ -1515,6 +1516,7 @@ public static class EchoesMapGenerator
         go.transform.SetPositionAndRotation(center, rot);
         go.transform.localScale = new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
         go.GetComponent<Renderer>().sharedMaterial = m;
+        go.GetComponent<MeshFilter>().sharedMesh = BoxMesh(go.transform.localScale); // UV en mètres : la texture ne s'étire pas
         if (!collider) Object.DestroyImmediate(go.GetComponent<Collider>());
         if (layer >= 0) go.layer = layer;
         GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic);
@@ -1644,6 +1646,7 @@ public static class EchoesMapGenerator
         if (m.HasProperty("_Color")) m.SetColor("_Color", c);
         if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
         if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", smoothness);
+        ApplySurface(m, name); // textures Poly Haven si ce matériau en a une
         EditorUtility.SetDirty(m);
         _mats[name] = m;
         return m;

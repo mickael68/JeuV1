@@ -56,3 +56,6 @@ Godot_*/
 *.tres
 *.import
 *.uid
+
+# Captures de vérification (EchoesSnapshot)
+/Captures/
