@@ -211,7 +211,9 @@ public static partial class EchoesMapGenerator
 
             var shaftRoot = new GameObject("Cages_Escalier").transform;
             shaftRoot.SetParent(root, false);
+            _shaftRects = new List<Rect>();
             foreach (var s in shafts) BuildShaft(shaftRoot, s);
+            BuildExterior(root);
 
             BuildElevator(root);
             BuildVentTunnel(root);
@@ -321,7 +323,11 @@ public static partial class EchoesMapGenerator
 
         WallAlongX(L.root, "Mur_Sud", zMin, -HalfX, HalfX, y0, y1, mw);
         WallAlongX(L.root, "Mur_Nord", zMax, -HalfX, HalfX, y0, y1, mw);
-        WallAlongZ(L.root, "Mur_Est", HalfX, zMin, zMax, y0, y1, mw, ShaftDoor(L, L.doorEast));
+        var eastHoles = new List<Hole>(ShaftDoor(L, L.doorEast));
+        bool exit = L.kind == Kind.Dorm && L.number == 1; // niveau 1 : porte de sortie vers l'extérieur
+        if (exit) eastHoles.Add(new Hole(ExitZ, ExitW, y0, y0 + DoorH));
+        WallAlongZ(L.root, "Mur_Est", HalfX, zMin, zMax, y0, y1, mw, eastHoles.ToArray());
+        if (exit) BuildExitDoor(L);
         WallAlongZ(L.root, "Mur_Ouest", -HalfX, zMin, zMax, y0, y1, mw, ShaftDoor(L, L.doorWest));
 
         BuildRoomRow(L, south, false, mw);
@@ -365,6 +371,9 @@ public static partial class EchoesMapGenerator
             if (elevatorLobby) doorW = 1.6f;
             if (L.kind == Kind.Abandoned && _rng.NextDouble() < 0.3) doorW = 2.4f; // porte arrachée
             holes.Add(new Hole(x + w * 0.5f, doorW, L.y, L.y + DoorH - 0.1f));
+            // Chaque studio (résidence et résidence inversée) a sa porte ; pas le palier de l'ascenseur
+            if ((L.kind == Kind.Dorm || L.kind == Kind.Inverted) && !elevatorLobby)
+                BuildStudioDoor(L, x + w * 0.5f, doorW, zc, k, north);
 
             if (k < widths.Length - 1)
             {
@@ -1158,6 +1167,10 @@ public static partial class EchoesMapGenerator
 
         var bottom = lv[0]; var topL = lv[lv.Count - 1];
         float yBot = bottom.y - Slab, yTop = topL.y + topL.h;
+
+        // Emprise extérieure (la pelouse est percée au-dessus des cages qui montent jusqu'au niveau 1)
+        if (yTop > _levels[1].y - Slab)
+            _shaftRects.Add(Rect.MinMaxRect(x0 - Wall, z0 - Wall, x0 + ShaftW + Wall, z0 + depth + Wall));
 
         var go = new GameObject($"Escalier_{(east ? "Est" : "Ouest")}_{bottom.number}_a_{topL.number}").transform;
         go.SetParent(parent, false);

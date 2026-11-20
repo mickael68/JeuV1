@@ -83,6 +83,14 @@ public static partial class EchoesMapGenerator
         ["Ascenseur_Cabine"] = new Surface("metal_plate", 1.5f, T(0.85f, 0.75f, 0.65f), 0.6f),
         ["Grille_Metal"] = new Surface("rusty_metal_02", 1f, G(0.6f), 0.5f),
         ["Tunnel_Aeration"] = new Surface("rusty_metal_02", 1.5f, G(0.8f), 0.5f),
+
+        // Portes et extérieur
+        ["Porte_Studio"] = new Surface("wood_table_001", 1.2f, T(0.95f, 0.85f, 0.75f)),
+        ["Porte_Studio_-5"] = new Surface("wood_table_001", 1.2f, T(0.7f, 0.35f, 0.35f)),
+        ["Porte_Sortie"] = new Surface("wood_table_001", 1.2f, T(0.6f, 0.45f, 0.35f)),
+        ["Exterieur_Herbe"] = new Surface("leafy_grass", 3f, G(0.9f)),
+        ["Exterieur_Allee"] = new Surface("concrete_pavement", 2f, G(0.85f)),
+        ["Facade_Brique"] = new Surface("red_brick_03", 2.5f, G(0.9f)),
     };
 
     static Dictionary<string, Texture2D> _texCache;

@@ -1,0 +1,26 @@
+# The Echoes Below - surveillant (homme ~65 ans, carrure de bucheron, chemise a carreaux rouge)
+version v1.2.1
+name surveillant_bucheron
+tags surveillant;the echoes below
+camera 0.0 0.0 0.0 0.0 0.0 1.0
+modifier macrodetails/Gender 1.000000
+modifier macrodetails/Age 0.810000
+modifier macrodetails/African 0.000000
+modifier macrodetails/Asian 0.000000
+modifier macrodetails/Caucasian 1.000000
+modifier macrodetails-universal/Muscle 0.700000
+modifier macrodetails-universal/Weight 0.650000
+modifier macrodetails-height/Height 0.620000
+modifier macrodetails-proportions/BodyProportions 0.500000
+modifier torso/torso-scale-horiz-decr|incr 0.200000
+modifier stomach/stomach-pregnant-decr|incr 0.150000
+eyes HighPolyEyes 2c12f43b-1303-432c-b7ce-d78346baf2e6
+eyebrows eyebrow001 9c81ec3a-faa5-4c94-9cdb-992300ba3084
+eyelashes Eyelashes01 d533836f-13ad-4836-8b65-051108253cd2
+hair short02 c104cd4a-1edc-43f9-8b94-f63345a44638
+clothes male_casualsuit03 39864dca-8d5c-4d7c-84ce-c00982e93cb7
+clothes shoes01 6e0c552e-e207-44df-8f70-c9bfdeddd8c6
+skeleton game_engine.mhskel
+skinMaterial skins/old_caucasian_male/old_caucasian_male.mhmat
+material HighPolyEyes 2c12f43b-1303-432c-b7ce-d78346baf2e6 eyes/materials/blue.mhmat
+subdivide False

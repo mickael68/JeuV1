@@ -14,7 +14,11 @@ public static class EchoesSnapshot
     static readonly View[] Views =
     {
         new View { name = "etage1_couloir",   pos = new Vector3(-12f, 5.1f, -2.5f),  euler = new Vector3(5, 90, 0),  ambient = 0.35f },
-        new View { name = "niveau0_hall",     pos = new Vector3(-2f, 1.6f, -1f),     euler = new Vector3(5, 0, 0),   ambient = 0.25f },
+        new View { name = "etage1_portes",    pos = new Vector3(6f, 5.1f, -2.0f),    euler = new Vector3(5, 200, 0), ambient = 0.35f },
+        new View { name = "etage1_sortie",    pos = new Vector3(12f, 5.1f, -2.5f),   euler = new Vector3(5, 90, 0),  ambient = 0.35f },
+        new View { name = "exterieur_entree", pos = new Vector3(34f, 6.2f, 6f),      euler = new Vector3(8, 235, 0), ambient = 0.5f },
+        new View { name = "exterieur_allee",  pos = new Vector3(22f, 5.1f, -2.5f),   euler = new Vector3(3, 90, 0),  ambient = 0.5f },
+        new View { name = "niveau0_hall",    pos = new Vector3(-2f, 1.6f, -1f),     euler = new Vector3(5, 0, 0),   ambient = 0.25f },
         new View { name = "niveau-1",         pos = new Vector3(-12f, -2.9f, -2.5f), euler = new Vector3(5, 90, 0),  ambient = 0.25f },
         new View { name = "niveau-2",         pos = new Vector3(-12f, -8.4f, -3f),   euler = new Vector3(5, 90, 0),  ambient = 0.2f },
         new View { name = "niveau-3_tunnels", pos = new Vector3(-12f, -12.9f, -3f),  euler = new Vector3(5, 90, 0),  ambient = 0.2f },
