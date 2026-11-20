@@ -99,8 +99,14 @@ public static partial class EchoesMapGenerator
         var mf = Mat("Facade_Brique", Color.white);
         float zS = CorrS - RoomDepth - 0.2f, zN = CorrN + RoomDepth + 0.2f, xE = HalfX + 0.2f, xW = -HalfX - 0.2f;
         float fy0 = gy - Slab;
-        WallAlongX(ext, "Facade_Sud", zS, xW - 0.1f, xE + 0.1f, fy0, FacadeTop, mf);
-        WallAlongX(ext, "Facade_Nord", zN, xW - 0.1f, xE + 0.1f, fy0, FacadeTop, mf);
+        var winS = new List<Hole>(); var winN = new List<Hole>();
+        foreach (var lv in _levels.Values)
+        {
+            winS.AddRange(StudioWindowHoles(lv, false));
+            winN.AddRange(StudioWindowHoles(lv, true));
+        }
+        WallAlongX(ext, "Facade_Sud", zS, xW - 0.1f, xE + 0.1f, fy0, FacadeTop, mf, winS.ToArray());
+        WallAlongX(ext, "Facade_Nord", zN, xW - 0.1f, xE + 0.1f, fy0, FacadeTop, mf, winN.ToArray());
         WallAlongZ(ext, "Facade_Est", xE, zS, zN, fy0, FacadeTop, mf, new Hole(ExitZ, ExitW, gy, gy + DoorH));
         var westHoles = new List<Hole>();
         foreach (var r in _shaftRects)

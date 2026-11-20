@@ -323,8 +323,11 @@ public static partial class EchoesMapGenerator
         float y0 = L.y, y1 = L.y + L.h;
         Slabs(L, zMin, zMax);
 
-        WallAlongX(L.root, "Mur_Sud", zMin, -HalfX, HalfX, y0, y1, mw);
-        WallAlongX(L.root, "Mur_Nord", zMax, -HalfX, HalfX, y0, y1, mw);
+        // Résidence : une fenêtre par studio dans les murs extérieurs
+        WallAlongX(L.root, "Mur_Sud", zMin, -HalfX, HalfX, y0, y1, mw, StudioWindowHoles(L, false));
+        WallAlongX(L.root, "Mur_Nord", zMax, -HalfX, HalfX, y0, y1, mw, StudioWindowHoles(L, true));
+        BuildStudioWindows(L, false, zMin + Wall / 2);
+        BuildStudioWindows(L, true, zMax - Wall / 2);
         var eastHoles = new List<Hole>(ShaftDoor(L, L.doorEast));
         bool exit = L.kind == Kind.Dorm && L.number == 1; // niveau 1 : porte de sortie vers l'extérieur
         if (exit) eastHoles.Add(new Hole(ExitZ, ExitW, y0, y0 + DoorH));
@@ -406,9 +409,10 @@ public static partial class EchoesMapGenerator
             case Kind.Inverted:
             {
                 bool mirror = L.kind == Kind.Inverted;
-                FurnishBedroom(L, r, north, mirror, L.kind == Kind.Abandoned, mirror);
-
                 int playerRoom = 4, invertedRoom = count - 1 - 4;
+                if (L.kind == Kind.Abandoned) FurnishBedroom(L, r, north, mirror, true, mirror);
+                else FurnishStudio(L, r, north, mirror, mirror, north && L.number == 1 && idx == playerRoom);
+
                 if (north && L.number == 1 && idx == playerRoom)
                     Marker(L, "Chambre_Joueur", new Vector3(r.center.x, y, r.center.y), Color.cyan);
                 if (north && L.kind == Kind.Inverted && idx == invertedRoom)
