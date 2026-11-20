@@ -91,6 +91,7 @@ public static partial class EchoesMapGenerator
         ["Exterieur_Herbe"] = new Surface("leafy_grass", 3f, G(0.9f)),
         ["Exterieur_Allee"] = new Surface("concrete_pavement", 2f, G(0.85f)),
         ["Facade_Brique"] = new Surface("red_brick_03", 2.5f, G(0.9f)),
+        ["Decor_Collines"] = new Surface("forest_leaves_04", 6f, T(0.45f, 0.55f, 0.35f)),
     };
 
     static Dictionary<string, Texture2D> _texCache;

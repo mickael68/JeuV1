@@ -164,6 +164,8 @@ public static partial class EchoesMapGenerator
             float s = Rand(0.6f, 1.4f);
             Model(X, rocks[_rng.Next(rocks.Length)], new Vector3(p.x, gy, p.y), Rand(0f, 360f), new Vector3(s, s * 0.7f, s), mFence);
         }
+        // 6) Décor lointain : collines boisées, petite ville
+        BuildBackdrop(X);
     }
 
     /// Lampadaire : poteau, tête, lumière chaude.

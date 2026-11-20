@@ -219,6 +219,7 @@ public static partial class EchoesMapGenerator
             BuildVentTunnel(root);
             BuildActors(root);
             EnsureSunPlayerAndSystems();
+            SetupSky();
 
             EditorUtility.DisplayProgressBar("The Echoes Below", "Calcul du NavMesh…", 0.95f);
             BakeNavMesh(root);
