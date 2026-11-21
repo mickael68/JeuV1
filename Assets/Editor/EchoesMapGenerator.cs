@@ -692,16 +692,19 @@ public static partial class EchoesMapGenerator
             }
         special[pocketI, pocketJ] = 99;
 
-        // 3) Chambres abandonnées 2×2 (8 × 8 m)
+        // 3) Studios abandonnés : 8 × 8 m (2×2 nœuds) ou 4 × 8 m (1×2 / 2×1), jamais collés entre eux
         var rooms = new List<RectInt>();
-        for (int tries = 0; tries < 400 && rooms.Count < 8; tries++)
+        for (int tries = 0; tries < 3000 && rooms.Count < 18; tries++)
         {
-            int i = _rng.Next(MazeNX - 1), j = _rng.Next(MazeNZ - 1);
+            int w = 2, h = 2;
+            double shape = _rng.NextDouble();
+            if (shape < 0.35) { w = 1; h = 2; } else if (shape < 0.7) { w = 2; h = 1; }
+            int i = _rng.Next(MazeNX - w + 1), j = _rng.Next(MazeNZ - h + 1);
             bool ok = true;
-            for (int a = i - 1; a <= i + 2 && ok; a++)
-                for (int b = j - 1; b <= j + 2 && ok; b++)
+            for (int a = i - 1; a <= i + w && ok; a++)
+                for (int b = j - 1; b <= j + h && ok; b++)
                 {
-                    bool inside = a >= i && a <= i + 1 && b >= j && b <= j + 1;
+                    bool inside = a >= i && a < i + w && b >= j && b < j + h;
                     if (inside && !Open(a, b)) ok = false;
                     if (a >= 0 && a < MazeNX && b >= 0 && b < MazeNZ && special[a, b] != 0) ok = false; // marge d'un nœud
                 }
@@ -710,9 +713,14 @@ public static partial class EchoesMapGenerator
             if (!ok) continue;
 
             int id = rooms.Count + 2;
-            special[i, j] = special[i + 1, j] = special[i, j + 1] = special[i + 1, j + 1] = id;
-            east[i, j] = east[i, j + 1] = north[i, j] = north[i + 1, j] = true;
-            rooms.Add(new RectInt(i, j, 2, 2));
+            for (int a = i; a < i + w; a++)
+                for (int b = j; b < j + h; b++)
+                {
+                    special[a, b] = id;
+                    if (a < i + w - 1) east[a, b] = true;
+                    if (b < j + h - 1) north[a, b] = true;
+                }
+            rooms.Add(new RectInt(i, j, w, h));
         }
 
         // 4) Quelques boucles pour éviter un labyrinthe trop "parfait"
@@ -905,6 +913,27 @@ public static partial class EchoesMapGenerator
             var p = Node(n.x, n.y);
             Cube(L.props, "Veilleuse_Secours", new Vector3(p.x, y1 - 0.25f, p.z), new Vector3(0.45f, 0.18f, 0.06f), Quaternion.identity, green, false, -1);
             PointLight(exitLight, new Vector3(p.x, y1 - 0.45f, p.z), 6f);
+        }
+
+        // 10 bis) Néons défaillants dans les couloirs : grésillent, s'éteignent, pendent du plafond
+        var neonNodes = new List<Vector2Int>();
+        for (int tries = 0; tries < 400 && neonNodes.Count < 16; tries++)
+        {
+            var n = new Vector2Int(_rng.Next(MazeNX), _rng.Next(MazeNZ));
+            if (!open[n.x, n.y] || special[n.x, n.y] >= 2 || special[n.x, n.y] == 99) continue;
+            if (Mathf.Abs(n.x - pocketI) + Mathf.Abs(n.y - pocketJ) < 3) continue;
+            bool far = true;
+            foreach (var o in neonNodes) if (Mathf.Abs(o.x - n.x) + Mathf.Abs(o.y - n.y) < 3) { far = false; break; }
+            foreach (var o in signNodes) if (o == n) { far = false; break; }
+            if (far) neonNodes.Add(n);
+        }
+        foreach (var n in neonNodes)
+        {
+            var p = Node(n.x, n.y);
+            double roll = _rng.NextDouble();
+            var mode = roll < 0.5 ? FailingLight.Mode.Failing : roll < 0.8 ? FailingLight.Mode.Dying : FailingLight.Mode.Dead;
+            float yaw = east[n.x, n.y] || (n.x > 0 && east[n.x - 1, n.y]) ? 0f : 90f; // dans le sens du couloir
+            Neon(L, new Vector3(p.x, y1, p.z), yaw, mode, _rng.NextDouble() < 0.3);
         }
 
         // 11) Ronde du surveillant à travers le labyrinthe
