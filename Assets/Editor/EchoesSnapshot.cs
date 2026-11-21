@@ -80,6 +80,26 @@ public static class EchoesSnapshot
             Object.DestroyImmediate(tex);
         }
 
+        // Vue dynamique : premier studio abandonné du niveau 0 (repère posé par le générateur)
+        var studioView = GameObject.Find("◆ Vue_Studio_Abandonne");
+        if (studioView != null)
+        {
+            camGo.transform.SetPositionAndRotation(studioView.transform.position + Vector3.up * 1.1f,
+                studioView.transform.rotation * Quaternion.Euler(18f, 0f, 0f));
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.3f, 0.3f, 0.3f);
+            var markerR = studioView.GetComponent<Renderer>();
+            if (markerR != null) markerR.enabled = false;
+            cam.Render();
+            if (markerR != null) markerR.enabled = true;
+            RenderTexture.active = rt;
+            var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            tex.Apply();
+            File.WriteAllBytes("Captures/niveau0_studio_abandonne.png", tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+        }
+
         RenderTexture.active = null;
         cam.targetTexture = null;
         RenderSettings.ambientLight = oldAmbient;

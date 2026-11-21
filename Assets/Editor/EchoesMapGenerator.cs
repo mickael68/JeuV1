@@ -161,6 +161,20 @@ public static partial class EchoesMapGenerator
     [MenuItem("The Echoes Below/Générer la map (greybox)")]
     public static void Generate()
     {
+        // Garde-fous : jamais en mode Play, et jamais avec d'anciens scripts (sinon la map est générée
+        // par l'ancienne version du générateur, juste avant que Unity recompile).
+        if (EditorApplication.isPlaying)
+        {
+            EditorUtility.DisplayDialog("The Echoes Below", "Arrête le mode Play avant de générer la map.", "OK");
+            return;
+        }
+        AssetDatabase.Refresh();
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+        {
+            EditorUtility.DisplayDialog("The Echoes Below",
+                "Des scripts viennent d'être modifiés : Unity les compile.\nRelance « Générer la map » quand la compilation est finie.", "OK");
+            return;
+        }
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
         EnsureFolder("Assets/Scenes");
@@ -710,6 +724,9 @@ public static partial class EchoesMapGenerator
                 if (Carvable(i, j + 1) && !north[i, j] && _rng.NextDouble() < 0.08) north[i, j] = true;
             }
 
+        // 4 bis) Les salles deviennent des studios abandonnés : une porte, et des brèches si nécessaire
+        var mazeStudios = PlanMazeStudios(rooms, east, north, Carvable, new Vector2Int(ElevNodeI, ElevNodeJ + 1), L.y);
+
         // 5) Sol et plafond par bandes (pas au-dessus des cages d'escalier)
         float y0 = L.y, y1 = L.y + L.h;
         for (int j = 0; j < MazeNZ; j++)
@@ -741,6 +758,12 @@ public static partial class EchoesMapGenerator
             [new Vector2Int(MazeWestDoorI, MazeDoorJ)] = new Hole(DoorZ, DoorW, y0, y0 + DoorH),
             [new Vector2Int(MazeEastDoorI, MazeDoorJ)] = new Hole(DoorZ, DoorW, y0, y0 + DoorH),
         };
+        foreach (var st in mazeStudios) // porte d'entrée de chaque studio abandonné
+        {
+            var e = st.entrance;
+            var hole = new Hole(e.alongX ? e.center.x : e.center.z, 1.1f, y0, y0 + DoorH - 0.1f);
+            if (e.alongX) holesH[e.wallKey] = hole; else holesV[e.wallKey] = hole;
+        }
 
         for (int j = 0; j <= MazeNZ; j++)
         {
@@ -797,18 +820,12 @@ public static partial class EchoesMapGenerator
         int Degree(int i, int j) =>
             (east[i, j] ? 1 : 0) + (i > 0 && east[i - 1, j] ? 1 : 0) + (north[i, j] ? 1 : 0) + (j > 0 && north[i, j - 1] ? 1 : 0);
 
-        // 7) Chambres : deux lits face à face, une armoire sert de cachette (tutoriel)
-        for (int k = 0; k < rooms.Count; k++)
+        // 7) Studios abandonnés : porte (entrouverte, fermée ou arrachée), meubles saccagés ;
+        //    l'armoire du premier sert de cachette (tutoriel)
+        for (int k = 0; k < mazeStudios.Count; k++)
         {
-            var rm = rooms[k];
-            float xa = MazeX0 + rm.x * MazeP, za = MazeZ0 + rm.y * MazeP;
-            var left = Rect.MinMaxRect(xa + 0.3f, za + 1.8f, xa + 4f, za + 7.7f);
-            var right = Rect.MinMaxRect(xa + 4f, za + 1.8f, xa + 7.7f, za + 7.7f);
-            var wardrobe = FurnishBedroom(L, left, true, false, true, false);
-            FurnishBedroom(L, right, true, true, true, false);
-            ScatterBoxes(L, Rect.MinMaxRect(xa + 0.6f, za + 0.6f, xa + 7.4f, za + 1.8f), _rng.Next(1, 4));
-            if (k == 0)
-                Marker(L, "Tuto_Cachette (armoire)", wardrobe != null ? wardrobe.transform.position : Node(rm.x, rm.y), Color.yellow);
+            BuildMazeStudioDoor(L, mazeStudios[k].entrance);
+            FurnishMazeStudio(L, mazeStudios[k], k == 0);
         }
 
         // 8) Hall : arrivée de l'ascenseur en panne, premières consignes du tutoriel
