@@ -48,9 +48,33 @@ public class StaffAI : MonoBehaviour
         var timeManager = FindFirstObjectByType<TimeManager>();
         if (timeManager != null)
         {
-            timeManager.OnNightStarted += () => _isNight = true;
-            timeManager.OnDayStarted += () => _isNight = false;
+            timeManager.OnNightStarted += () => SetOnDuty(true);
+            timeManager.OnDayStarted += () => SetOnDuty(false);
+            int h = timeManager.CurrentHour;
+            _isNight = h >= 22 || h < 6;
         }
+        _post = transform.position;
+        SetOnDuty(_isNight);
+    }
+
+    private Vector3 _post;
+
+    /// La nuit : le surveillant fait sa ronde. Le jour : il n'est pas dans les couloirs
+    /// (invisible, sans collision), il reprend sa ronde depuis son poste à la nuit tombée.
+    private void SetOnDuty(bool onDuty)
+    {
+        _isNight = onDuty;
+        foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = onDuty;
+        foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = onDuty;
+        if (_agent == null) return;
+        if (onDuty)
+        {
+            _agent.Warp(_post);
+            _agent.isStopped = false;
+            _currentWaypointIndex = 0;
+            if (_waypoints.Count > 0) _agent.SetDestination(_waypoints[0]);
+        }
+        else if (_agent.isOnNavMesh) _agent.isStopped = true;
     }
 
     private void Update()

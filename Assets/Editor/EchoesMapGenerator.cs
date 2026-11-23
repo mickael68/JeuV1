@@ -861,6 +861,14 @@ public static partial class EchoesMapGenerator
         var pocket = Node(pocketI, pocketJ);
         Marker(L, "Escalier_Cache (vers -1, puis -2)", pocket + new Vector3(1.2f, 0, 0), Color.yellow);
         Marker(L, "Passage_Cache (ramper : Ctrl / C)", Node(pocketI, pocketJ + 1) + new Vector3(1f, 0, -1.2f), Color.yellow);
+        {
+            // Grille d'aération sur le trou (E pour la retirer, puis passer accroupi)
+            float hx = MazeX0 + (pocketI + 0.5f) * MazeP + 1f, hz = MazeZ0 + (pocketJ + 1) * MazeP;
+            var grate = Cube(L.root, "Grille_Passage (E pour retirer)", new Vector3(hx, y0 + 0.6f, hz + 0.13f), new Vector3(1.05f, 1.25f, 0.05f),
+                Quaternion.identity, Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f), true, _layerWalls);
+            grate.AddComponent<VentGrate>();
+            NonStatic(grate);
+        }
         ScatterBoxes(L, new Rect(pocket.x - 1.8f, pocket.z + 2.4f, 1.6f, 1.2f), 3); // cartons qui masquent le trou
         Model(L, KFurniture + "bookcaseOpenLow", Node(pocketI, pocketJ + 1) + new Vector3(-0.4f, 0, -1.5f), 0f, new Vector3(1.2f, 1f, 0.4f), mp);
         RockPile(L, new Rect(pocket.x - 1.8f, pocket.z - 1.6f, 1.2f, 1.2f), 3, mp);
@@ -1282,6 +1290,15 @@ public static partial class EchoesMapGenerator
                 float t = lo.y + half + (j + 1) * rise;
                 Box(go, "Marche", new Vector3(bx0, t - 0.3f, zn - (j + 1) * tread), new Vector3(bx1, t, zn - j * tread), ms, _layerGround);
             }
+        }
+
+        // Une porte par étage dans le mur côté bâtiment (pas là où l'éboulement bouche le passage)
+        var mStairDoor = Mat("Porte_Escalier", new Color(0.42f, 0.44f, 0.46f), 0.45f);
+        foreach (var L in lv)
+        {
+            if (L.number == s.rubbleLevel) continue;
+            var hinge = new Vector3(xBuilding, L.y + 0.01f, DoorZ - DoorW * 0.5f + 0.02f);
+            BuildDoor(DoorsRoot(L), "Porte_Escalier_" + L.number, hinge, -90f, DoorW - 0.04f, DoorH - 0.02f, mStairDoor, "la porte de l'escalier");
         }
 
         foreach (var L in lv)

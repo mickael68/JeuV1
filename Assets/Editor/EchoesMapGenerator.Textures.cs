@@ -86,6 +86,9 @@ public static partial class EchoesMapGenerator
 
         // Portes et extérieur
         ["Porte_Studio"] = new Surface("wood_table_001", 1.2f, T(0.95f, 0.85f, 0.75f)),
+        ["Porte_Escalier"] = new Surface("metal_plate", 1.5f, G(0.75f), 0.5f),
+        ["Porte_Cave"] = new Surface("metal_plate", 1.5f, T(0.75f, 0.68f, 0.58f), 0.5f),
+        ["Porte_Technique"] = new Surface("rusty_metal_02", 1.5f, G(0.7f), 0.5f),
         ["Porte_Studio_-5"] = new Surface("wood_table_001", 1.2f, T(0.7f, 0.35f, 0.35f)),
         ["Porte_Sortie"] = new Surface("wood_table_001", 1.2f, T(0.6f, 0.45f, 0.35f)),
         ["Exterieur_Herbe"] = new Surface("leafy_grass", 3f, G(0.9f)),

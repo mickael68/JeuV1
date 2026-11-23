@@ -125,7 +125,7 @@ public static partial class EchoesMapGenerator
         const float w = 1.1f;
         var m = Mat("Porte_Studio_0", new Color(0.45f, 0.38f, 0.32f));
         double roll = _rng.NextDouble();
-        if (roll < 0.2)
+        if (false) // (plus de porte arrachée : chaque ouverture a sa porte)
         {
             // Porte arrachée, couchée par terre dans la salle
             var c = e.center + e.inward * 1.4f + Vector3.up * 0.03f;
@@ -137,7 +137,7 @@ public static partial class EchoesMapGenerator
         var hinge = e.center - along * (w * 0.5f - 0.02f) + Vector3.up * 0.01f;
         var door = BuildDoor(DoorsRoot(L), "Porte_Studio_Abandonne", hinge, e.alongX ? 0f : -90f, w - 0.04f, DoorH - 0.12f, m, "la porte du studio");
         door.openClip = SndDoorCreak; // vieille porte qui grince
-        if (roll < 0.75) door.startAngle = (_rng.NextDouble() < 0.5 ? -1f : 1f) * Rand(20f, 85f); // entrouverte
+        if (roll < 0.6) door.startAngle = (_rng.NextDouble() < 0.5 ? -1f : 1f) * Rand(20f, 85f); // entrouverte
     }
 
     /// Studio abandonné (8 × 8 m ou 4 × 8 m). "back" = mur opposé à la porte.
