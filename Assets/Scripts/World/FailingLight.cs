@@ -34,7 +34,8 @@ public class FailingLight : MonoBehaviour
         if (buzz != null)
         {
             _audio = gameObject.AddComponent<AudioSource>();
-            _audio.clip = buzz; _audio.loop = true; _audio.spatialBlend = 1f; _audio.maxDistance = 8f; _audio.volume = 0.35f;
+            _audio.clip = buzz; _audio.loop = true; _audio.spatialBlend = 1f; _audio.volume = 0.35f;
+            _audio.rolloffMode = AudioRolloffMode.Linear; _audio.minDistance = 1f; _audio.maxDistance = 9f;
         }
         _timer = Random.Range(0f, 2f);
         Set(mode != Mode.Dead && Random.value < 0.5f, 1f);
@@ -95,7 +96,7 @@ public class FailingLight : MonoBehaviour
         }
         if (_audio != null)
         {
-            if (on && !_audio.isPlaying) _audio.Play();
+            if (on && !_audio.isPlaying) { _audio.time = Random.Range(0f, Mathf.Max(0f, buzz.length - 1f)); _audio.Play(); }
             else if (!on && _audio.isPlaying) _audio.Stop();
         }
     }

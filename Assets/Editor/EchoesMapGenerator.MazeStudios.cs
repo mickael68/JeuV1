@@ -136,6 +136,7 @@ public static partial class EchoesMapGenerator
         Vector3 along = e.alongX ? Vector3.right : Vector3.forward;
         var hinge = e.center - along * (w * 0.5f - 0.02f) + Vector3.up * 0.01f;
         var door = BuildDoor(DoorsRoot(L), "Porte_Studio_Abandonne", hinge, e.alongX ? 0f : -90f, w - 0.04f, DoorH - 0.12f, m, "la porte du studio");
+        door.openClip = SndDoorCreak; // vieille porte qui grince
         if (roll < 0.75) door.startAngle = (_rng.NextDouble() < 0.5 ? -1f : 1f) * Rand(20f, 85f); // entrouverte
     }
 
@@ -256,6 +257,7 @@ public static partial class EchoesMapGenerator
         var fl = lightGo.AddComponent<FailingLight>();
         fl.mode = mode;
         fl.tube = tube.GetComponent<Renderer>();
+        if (mode != FailingLight.Mode.Dead) fl.buzz = SndNeonBuzz;
 
         if (hanging) // décrochée : pivote autour d'une extrémité
         {

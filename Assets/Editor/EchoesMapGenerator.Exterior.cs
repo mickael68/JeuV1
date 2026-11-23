@@ -51,6 +51,8 @@ public static partial class EchoesMapGenerator
         rb.useGravity = false;
         var door = hinge.AddComponent<Door>();
         door.displayName = label;
+        door.openClip = SndDoorOpen;
+        door.closeClip = SndDoorClose;
         NonStatic(hinge);
         return door;
     }

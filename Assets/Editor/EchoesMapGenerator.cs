@@ -176,6 +176,7 @@ public static partial class EchoesMapGenerator
             return;
         }
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        ConfigureSoundImports();
 
         EnsureFolder("Assets/Scenes");
         EnsureFolder("Assets/Materials");
@@ -235,6 +236,7 @@ public static partial class EchoesMapGenerator
             BuildActors(root);
             EnsureSunPlayerAndSystems();
             SetupSky();
+            AssignPlayerAndAmbienceSounds();
 
             EditorUtility.DisplayProgressBar("The Echoes Below", "Calcul du NavMesh…", 0.95f);
             BakeNavMesh(root);
@@ -1372,6 +1374,7 @@ public static partial class EchoesMapGenerator
 
         elevator.cab = cab;
         elevator.cabLight = cabLight;
+        elevator.arrivalClip = SndElevatorArrival;
         elevator.doorSlide = 1.35f; // la porte ouverte reste cachée dans la gaine
         Marker(_levels[0], "Panne_Ascenseur (musique de panne)", new Vector3(ElevDoorX, 0f, ElevRect.yMax + 0.6f), Color.magenta);
     }
