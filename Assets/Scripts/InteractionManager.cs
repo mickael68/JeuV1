@@ -30,6 +30,13 @@ public class InteractionManager : MonoBehaviour
             return;
         }
 
+        // Lecture d'une note : E sert à la refermer
+        if (NoteReader.IsOpen)
+        {
+            if (interactionLabel != null) interactionLabel.gameObject.SetActive(false);
+            return;
+        }
+
         // Assis : E pour se lever, où que l'on regarde
         var player = PlayerController.Instance;
         if (player != null && player.IsSeated)

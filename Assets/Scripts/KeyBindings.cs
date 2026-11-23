@@ -13,6 +13,9 @@ public enum GameAction
     Crouch,
     Interact,
     Flashlight,
+    UseItem,
+    DropItem,
+    Inventory,
 }
 
 /// <summary>
@@ -36,12 +39,16 @@ public static class KeyBindings
         [GameAction.Crouch] = KeyCode.LeftControl,
         [GameAction.Interact] = KeyCode.E,
         [GameAction.Flashlight] = KeyCode.F,
+        [GameAction.UseItem] = KeyCode.Mouse0,
+        [GameAction.DropItem] = KeyCode.G,
+        [GameAction.Inventory] = KeyCode.Tab,
     };
 
     public static readonly GameAction[] All =
     {
         GameAction.Forward, GameAction.Backward, GameAction.Left, GameAction.Right,
         GameAction.Jump, GameAction.Sprint, GameAction.Crouch, GameAction.Interact, GameAction.Flashlight,
+        GameAction.UseItem, GameAction.DropItem, GameAction.Inventory,
     };
 
     static Dictionary<GameAction, KeyCode> _keys;
@@ -121,6 +128,9 @@ public static class KeyBindings
             case GameAction.Crouch: return "S'accroupir";
             case GameAction.Interact: return "Interagir";
             case GameAction.Flashlight: return "Lampe torche";
+            case GameAction.UseItem: return "Utiliser l'objet";
+            case GameAction.DropItem: return "Lâcher l'objet";
+            case GameAction.Inventory: return "Détail de l'inventaire";
             default: return a.ToString();
         }
     }

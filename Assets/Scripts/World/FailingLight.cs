@@ -88,6 +88,8 @@ public class FailingLight : MonoBehaviour
         _on = on;
         _light.enabled = on;
         _light.intensity = _base * level;
+        if (_light == null) _light = GetComponent<Light>();
+        if (_mpb == null) _mpb = new MaterialPropertyBlock(); // aussi après une recompilation pendant le jeu
         if (tube != null)
         {
             tube.GetPropertyBlock(_mpb);

@@ -176,6 +176,7 @@ public static partial class EchoesMapGenerator
 
         // 8) Locaux : porte métallique + contenu selon le type
         var mDoor = Mat(technical ? "Porte_Technique" : "Porte_Cave", technical ? new Color(0.4f, 0.42f, 0.4f) : new Color(0.5f, 0.45f, 0.38f), 0.4f);
+        var lockedRoom = !technical && nodeRooms.Count > 0 ? nodeRooms[nodeRooms.Count / 2] : null; // cave de R. Lefèvre
         foreach (var nr in nodeRooms)
         {
             var e = nr.plan.entrance;
@@ -183,8 +184,17 @@ public static partial class EchoesMapGenerator
             var hinge = e.center - along * (0.6f - 0.02f) + Vector3.up * 0.01f;
             var door = BuildDoor(DoorsRoot(L), "Porte_" + nr.type, hinge, e.alongX ? 0f : -90f, 1.16f, DoorH - 0.12f, mDoor, "la porte");
             door.openClip = SndDoorCreak;
-            if (_rng.NextDouble() < 0.5) door.startAngle = (_rng.NextDouble() < 0.5 ? -1f : 1f) * Rand(15f, 80f);
+            if (nr == lockedRoom)
+            {
+                door.locked = true;
+                door.requiredKeyId = "cave_lefevre";
+                door.lockedMessage = "Cave fermée à clé. Étiquette sur la porte : « R. Lefèvre ».";
+                door.displayName = "la cave de R. Lefèvre";
+                PlaceItem(L, "carnet", RoomCenter(nr.plan.rect, L.y) + new Vector3(0.6f, 0f, -0.4f), Rand(0f, 360f));
+            }
+            else if (_rng.NextDouble() < 0.5) door.startAngle = (_rng.NextDouble() < 0.5 ? -1f : 1f) * Rand(15f, 80f);
             FurnishNodeRoom(L, nr, mp);
+            if (nr != lockedRoom) MaybeBattery(L, RoomCenter(nr.plan.rect, L.y) + new Vector3(Rand(-1f, 1f), 0f, Rand(-1f, 1f)), 0.3);
         }
 
         // 9) Couloirs : tuyaux au plafond (-2), encombrement, lumières (néons fatigués et défaillants)

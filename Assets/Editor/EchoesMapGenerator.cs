@@ -193,6 +193,7 @@ public static partial class EchoesMapGenerator
         _models = new Dictionary<string, GameObject>();
         ResetBoxMeshes();
         _skipRealistic = false; _realisticPrepared = false; _generatorMarked = false;
+        EnsureItems(); // fiches et modèles des objets ramassables
         _rng = new System.Random(Seed);
         _layerGround = Layer("Ground"); _layerWalls = Layer("Walls");
         _layerFurniture = Layer("Furniture"); _layerNpc = Layer("NPC");
@@ -238,6 +239,7 @@ public static partial class EchoesMapGenerator
             EnsureSunPlayerAndSystems();
             SetupSky();
             AssignPlayerAndAmbienceSounds();
+            EnsurePlayerInventory();
 
             EditorUtility.DisplayProgressBar("The Echoes Below", "Calcul du NavMesh…", 0.95f);
             BakeNavMesh(root);
@@ -889,7 +891,8 @@ public static partial class EchoesMapGenerator
                 if (Degree(i, j) == 1 && notes < 10 && _rng.NextDouble() < 0.55)
                 {
                     notes++;
-                    Model(L, KFurniture + "sideTableDrawers", c + off, Rand(0, 360), new Vector3(0.6f, 0.7f, 0.5f), mp);
+                    var drawer = Model(L, KFurniture + "sideTableDrawers", c + off, Rand(0, 360), new Vector3(0.6f, 0.7f, 0.5f), mp);
+                    PlaceItem(L, NextNoteId(), TopOf(drawer, c + off + Vector3.up * 0.7f), Rand(0f, 360f));
                     Marker(L, $"Note_{notes:00} (indice / lore)", c + off + Vector3.up * 0.75f, Color.yellow);
                     continue;
                 }

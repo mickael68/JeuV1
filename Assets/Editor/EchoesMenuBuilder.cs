@@ -273,28 +273,27 @@ public static class EchoesMenuBuilder
         var toMenu = MakeButton("Menu_Principal", main, "Menu principal", 34, ButtonBg, TextAlignmentOptions.Center);
         Place((RectTransform)toMenu.transform, Center, Center, new Vector2(0, -110), new Vector2(440, 68));
 
-        // Panneau options (réglages du joueur)
+        // Panneau options (réglages du joueur) : onglets Réglages / Touches
         var opts = UI("Pause_Options", pause.transform);
         Stretch(opts);
         var oBox = Img("Cadre", opts, PanelCol);
-        Place(oBox.rectTransform, Center, Center, Vector2.zero, new Vector2(1250, 760));
+        Place(oBox.rectTransform, Center, Center, Vector2.zero, new Vector2(1250, 820));
         var oTitle = Text("Titre", oBox.transform, "Options", 54, TextAlignmentOptions.Top, Bone);
         Place(oTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -35), new Vector2(800, 75));
-        var oSep = Img("Separateur", oBox.transform, new Color(1f, 1f, 1f, 0.08f));
-        oSep.raycastTarget = false;
-        Place(oSep.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(40, -130), new Vector2(2, 500));
-        KeyBindingsBlock(oBox.transform, new Vector2(-70, -125), new Vector2(520, 520));
+        var oPages = OptionTabs(oBox.transform, -125f);
 
         string[] sliderNames = { "Sensibilité de la souris", "Champ de vision", "Champ de vision en course", "Vitesse de marche", "Vitesse de course" };
         var sliders = new Slider[sliderNames.Length];
         for (int i = 0; i < sliderNames.Length; i++)
         {
-            float y = -140 - i * 98;
-            var l = Text("Label_" + i, oBox.transform, sliderNames[i], 28, TextAlignmentOptions.Left, Bone);
-            Place(l.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y), new Vector2(520, 40));
-            sliders[i] = MakeSlider(oBox.transform);
-            Place((RectTransform)sliders[i].transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y - 48), new Vector2(520, 22));
+            float y = -10 - i * 92;
+            var l = Text("Label_" + i, oPages[0], sliderNames[i], 30, TextAlignmentOptions.Left, Bone);
+            Place(l.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, y), new Vector2(760, 42));
+            sliders[i] = MakeSlider(oPages[0]);
+            Place((RectTransform)sliders[i].transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, y - 50), new Vector2(760, 24));
         }
+        KeyBindingsPage(oPages[1]);
+
         var oBack = MakeButton("Retour", oBox.transform, "Retour", 32, ButtonBg, TextAlignmentOptions.Center);
         Place((RectTransform)oBack.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 35), new Vector2(280, 64));
         opts.gameObject.SetActive(false);
@@ -507,7 +506,7 @@ public static class EchoesMenuBuilder
         var p = UI("Panel_Options", root);
         Stretch(p);
         var box = Img("Cadre", p, PanelCol);
-        Place(box.rectTransform, Center, Center, Vector2.zero, new Vector2(1250, 800));
+        Place(box.rectTransform, Center, Center, Vector2.zero, new Vector2(1250, 820));
 
         var t = Text("Titre", box.transform, "Options", 58, TextAlignmentOptions.Top, Bone);
         Place(t.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(1000, 80));
@@ -515,34 +514,29 @@ public static class EchoesMenuBuilder
         line.raycastTarget = false;
         Place(line.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -128), new Vector2(160, 3));
 
-        // Colonne de gauche : réglages
+        var pages = OptionTabs(box.transform, -150f);
+
+        // Onglet Réglages : une colonne centrée, valeurs à droite
         string[] names = { "Volume général", "Musique", "Sensibilité de la souris", "Champ de vision" };
         var sliders = new Slider[names.Length];
         var values = new TextMeshProUGUI[names.Length];
         for (int i = 0; i < names.Length; i++)
         {
-            float y = -175 - i * 100;
-            var l = Text("Label_" + i, box.transform, names[i], 28, TextAlignmentOptions.Left, Bone);
-            Place(l.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y), new Vector2(460, 40));
-            values[i] = Text("Valeur_" + i, box.transform, "", 26, TextAlignmentOptions.Right, Accent);
-            Place(values[i].rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(440, y), new Vector2(160, 40));
-            sliders[i] = MakeSlider(box.transform);
-            Place((RectTransform)sliders[i].transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, y - 50), new Vector2(520, 22));
+            float y = -10 - i * 92;
+            var l = Text("Label_" + i, pages[0], names[i], 30, TextAlignmentOptions.Left, Bone);
+            Place(l.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, y), new Vector2(760, 42));
+            values[i] = Text("Valeur_" + i, pages[0], "", 28, TextAlignmentOptions.Right, Accent);
+            Place(values[i].rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, y), new Vector2(760, 42));
+            sliders[i] = MakeSlider(pages[0]);
+            Place((RectTransform)sliders[i].transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, y - 50), new Vector2(760, 24));
         }
+        var fsLabel = Text("Label_PleinEcran", pages[0], "Plein écran", 30, TextAlignmentOptions.Left, Bone);
+        Place(fsLabel.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -10 - 4 * 92), new Vector2(760, 42));
+        var toggle = MakeToggle(pages[0]);
+        Place((RectTransform)toggle.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(360, -10 - 4 * 92), new Vector2(40, 40));
 
-        // Plein écran
-        var fsLabel = Text("Label_PleinEcran", box.transform, "Plein écran", 28, TextAlignmentOptions.Left, Bone);
-        Place(fsLabel.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -575), new Vector2(400, 40));
-        var toggle = MakeToggle(box.transform);
-        Place((RectTransform)toggle.transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(560, -575), new Vector2(40, 40));
-
-        // Séparateur vertical
-        var sep = Img("Separateur", box.transform, new Color(1f, 1f, 1f, 0.08f));
-        sep.raycastTarget = false;
-        Place(sep.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(40, -170), new Vector2(2, 460));
-
-        // Colonne de droite : touches personnalisables
-        KeyBindingsBlock(box.transform, new Vector2(-70, -160), new Vector2(520, 520));
+        // Onglet Touches
+        KeyBindingsPage(pages[1]);
 
         back = MakeButton("Retour", box.transform, "Retour", 32, ButtonBg, TextAlignmentOptions.Center);
         Place((RectTransform)back.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(280, 64));
@@ -564,11 +558,34 @@ public static class EchoesMenuBuilder
         return p.gameObject;
     }
 
-    /// Bloc "Touches" (construit à l'exécution par KeyBindingsUI), ancré en haut à droite du cadre.
-    static void KeyBindingsBlock(Transform box, Vector2 pos, Vector2 size)
+    /// Deux onglets (Réglages / Touches) sous le titre ; renvoie les deux pages (zones de contenu).
+    static Transform[] OptionTabs(Transform box, float tabsY)
     {
-        var rt = UI("Touches", box);
-        Place(rt, new Vector2(1, 1), new Vector2(1, 1), pos, size);
+        var bReg = MakeButton("Onglet_Reglages", box, "Réglages", 30, ButtonBg, TextAlignmentOptions.Center);
+        Place((RectTransform)bReg.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-135, tabsY), new Vector2(250, 56));
+        var bKeys = MakeButton("Onglet_Touches", box, "Touches", 30, ButtonBg, TextAlignmentOptions.Center);
+        Place((RectTransform)bKeys.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(135, tabsY), new Vector2(250, 56));
+
+        var pages = new Transform[2];
+        for (int i = 0; i < 2; i++)
+        {
+            var page = UI(i == 0 ? "Page_Reglages" : "Page_Touches", box);
+            page.anchorMin = Vector2.zero; page.anchorMax = Vector2.one;
+            page.offsetMin = new Vector2(90, 130);              // au-dessus du bouton Retour
+            page.offsetMax = new Vector2(-90, tabsY - 80);      // sous les onglets
+            pages[i] = page;
+        }
+        var tg = box.gameObject.AddComponent<TabGroup>();
+        tg.tabs = new[] { bReg, bKeys };
+        tg.pages = new[] { pages[0].gameObject, pages[1].gameObject };
+        return pages;
+    }
+
+    /// Liste des touches (construite à l'exécution par KeyBindingsUI) sur toute la page.
+    static void KeyBindingsPage(Transform page)
+    {
+        var rt = UI("Touches", page);
+        Place(rt, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -5), new Vector2(1060, 470));
         var ui = rt.gameObject.AddComponent<KeyBindingsUI>();
         var so = new SerializedObject(ui);
         Set(so, "font", _font);

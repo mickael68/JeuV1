@@ -12,6 +12,8 @@ public class Door : MonoBehaviour, IInteractable
     [Tooltip("Durée de l'animation (secondes).")]
     public float duration = 0.6f;
     public bool locked;
+    [Tooltip("Si renseigné : la porte s'ouvre avec la clé (ItemData.keyId) correspondante de l'inventaire.")]
+    public string requiredKeyId;
     [TextArea] public string lockedMessage = "C'est fermé à clé.";
     public string displayName = "la porte";
     [Tooltip("Ouverte au lancement (angle positif ou négatif).")]
@@ -48,8 +50,16 @@ public class Door : MonoBehaviour, IInteractable
     {
         if (locked)
         {
-            Debug.Log("[Porte] " + lockedMessage);
-            return;
+            if (!string.IsNullOrEmpty(requiredKeyId) && Inventory.Instance != null && Inventory.Instance.HasKey(requiredKeyId))
+            {
+                locked = false;
+                HudMessage.Show("Déverrouillé.", 2f);
+            }
+            else
+            {
+                HudMessage.Show(lockedMessage, 2.5f);
+                return;
+            }
         }
 
         float target = 0f;

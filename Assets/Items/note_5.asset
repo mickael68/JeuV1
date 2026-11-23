@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58287c0c60e9d954e8930160d209f6af, type: 3}
+  m_Name: note_5
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  id: note_5
+  displayName: "Feuille griffonn\xE9e"
+  description: "Une feuille pli\xE9e, l'encre a bav\xE9 par endroits."
+  kind: 2
+  model: {fileID: 1524080324605258679, guid: c49699c895fa4e6439f8f236ad7fa387, type: 3}
+  handSize: 0.2
+  stackable: 0
+  maxStack: 1
+  consumedOnUse: 0
+  keyId: 
+  noteText: "Note du service technique :\n\nLe conduit d'a\xE9ration du -2 n'est
+    plus entretenu. Panneaux rouill\xE9s, risque d'effondrement. Les purges de vapeur
+    se d\xE9clenchent toujours toutes les quelques secondes.\n\nNE PAS ENTRER."
+  batteryCharge: 1

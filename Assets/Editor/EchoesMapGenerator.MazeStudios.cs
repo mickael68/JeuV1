@@ -201,6 +201,10 @@ public static partial class EchoesMapGenerator
         Wreck(Piece(L, MegaSinks, null, P(ku, kd + 0.65f), kyaw, new Vector3(0.62f, 0.9f, 0.62f), mp), 0.1f);
         Wreck(Piece(L, MegaFridges, null, P(ku + (narrow ? 0.03f : -0.03f), kd + 1.4f), kyaw, new Vector3(0.66f, 1.75f, 0.66f), mp), 0.35f);
 
+        // Objets : la clé de R. Lefèvre dans le studio du tutoriel (près du lit), parfois une pile
+        if (hidingTutorial) PlaceItem(L, "cle_cave", P(narrow ? 1.9f : 2.3f, 1.7f), Rand(0f, 360f));
+        MaybeBattery(L, P(Rand(1f, W - 1f), Rand(2.5f, D - 2f)), 0.35);
+
         // Débris : cartons, gravats, dalles de plafond tombées
         float u0 = narrow ? 1.1f : 2f, u1 = narrow ? W - 1.1f : 6f;
         var pa = P(u0, 3f); var pb = P(u1, D - 1.5f);

@@ -149,6 +149,7 @@ public static partial class EchoesMapGenerator
 
         // Bureau contre le mur de droite + chaise de bureau
         var desk = Piece(L, MegaDesks, KFurniture + "desk", P(3.55f, 1.2f), faceLeft, new Vector3(0.7f, 0.78f, 1.4f), mp);
+        if (playerRoom) PlaceItem(L, "montre", TopOf(desk, P(3.55f, 1.2f) + Vector3.up * 0.78f), Rand(0f, 360f));
         if (desk != null && deskOnCeiling)
             desk.transform.RotateAround(new Vector3(P(3.55f, 1.2f).x, y + L.h * 0.5f, P(3.55f, 1.2f).z), Vector3.right, 180f);
         var chair = Piece(L, MegaChairs, KFurniture + "chairDesk", P(2.85f, 1.2f), faceRight, new Vector3(0.65f, 1.1f, 0.65f), mp);

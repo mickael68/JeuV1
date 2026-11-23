@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58287c0c60e9d954e8930160d209f6af, type: 3}
+  m_Name: carnet
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  id: carnet
+  displayName: "Carnet de R. Lef\xE8vre"
+  description: "Un carnet couvert de notes serr\xE9es. L'\xE9criture devient de plus
+    en plus nerveuse."
+  kind: 2
+  model: {fileID: 8499156566907418512, guid: 4f7f7dcc576c46649a2645c5830def33, type: 3}
+  handSize: 0.22
+  stackable: 0
+  maxStack: 1
+  consumedOnUse: 0
+  keyId: 
+  noteText: "Carnet de R. Lef\xE8vre\n\n12/10 \u2014 J'ai trouv\xE9 l'acc\xE8s aux
+    sous-sols. Tout le monde croit que \xE7a s'arr\xEAte au -2.\n\n15/10 \u2014 Le
+    conduit sous les locaux techniques m\xE8ne plus bas. Il faut ramper longtemps.
+    Ne pas marcher sur les panneaux rouill\xE9s.\n\n19/10 \u2014 Au fond il y a quelque
+    chose qui imite les voix. Il conna\xEEt nos pr\xE9noms.\n\n21/10 \u2014 J'ai
+    cach\xE9 ma cl\xE9 de cave dans le vieux studio du labyrinthe, pr\xE8s du lit.
+    Si je ne remonte pas, que quelqu'un vienne lire la suite ici."
+  batteryCharge: 1

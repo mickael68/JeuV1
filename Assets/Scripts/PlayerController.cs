@@ -140,6 +140,9 @@ public class PlayerController : MonoBehaviour
 
         SetupFlashlight();
         SetupPauseMenu();
+        // Inventaire et pile de lampe : toujours présents, même si la map n'a pas été régénérée
+        if (GetComponent<Inventory>() == null) gameObject.AddComponent<Inventory>();
+        if (GetComponent<FlashlightBattery>() == null) gameObject.AddComponent<FlashlightBattery>();
         UpdateSettings();
     }
 

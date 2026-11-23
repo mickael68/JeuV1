@@ -42,23 +42,30 @@ public class KeyBindingsUI : MonoBehaviour
     {
         _built = true;
         var rt = (RectTransform)transform;
+        float width = rt.rect.width > 1f ? rt.rect.width : rt.sizeDelta.x;
+        float avail = rt.rect.height > 1f ? rt.rect.height : rt.sizeDelta.y;
 
-        var title = MakeText("Titre", rt, "Touches", fontSize + 4, TextAlignmentOptions.Left, labelColor);
-        title.fontStyle = FontStyles.Bold;
-        Place(title.rectTransform, 0, rowHeight, 1f);
+        // Deux colonnes dès que la liste est longue : lisible, gros caractères
+        int n = KeyBindings.All.Length;
+        int columns = n > 7 && width > 700f ? 2 : 1;
+        int rowsPerCol = Mathf.CeilToInt(n / (float)columns);
+        if (avail > 1f) rowHeight = Mathf.Clamp(avail / (rowsPerCol + 2.6f), 34f, 58f);
+        fontSize = Mathf.Max(18f, rowHeight * 0.48f);
+        const float colGap = 60f;
+        float colW = (width - colGap * (columns - 1)) / columns;
 
-        int i = 1;
-        foreach (var a in KeyBindings.All)
+        for (int idx = 0; idx < n; idx++)
         {
+            var a = KeyBindings.All[idx];
+            int col = idx / rowsPerCol, row = idx % rowsPerCol;
+            float x0 = col * (colW + colGap);
+            float y = -row * rowHeight;
+
             var label = MakeText("Action_" + a, rt, KeyBindings.ActionName(a), fontSize, TextAlignmentOptions.Left, labelColor);
-            Place(label.rectTransform, i, rowHeight, 0.55f);
+            PlaceAbs(label.rectTransform, x0, y, colW * 0.56f, rowHeight);
 
             var btnRt = NewRect("Touche_" + a, rt);
-            btnRt.anchorMin = new Vector2(0.58f, 1f);
-            btnRt.anchorMax = new Vector2(1f, 1f);
-            btnRt.pivot = new Vector2(0.5f, 1f);
-            btnRt.anchoredPosition = new Vector2(0f, -i * rowHeight - 3f);
-            btnRt.sizeDelta = new Vector2(0f, rowHeight - 6f);
+            PlaceAbs(btnRt, x0 + colW * 0.58f, y - 4f, colW * 0.42f, rowHeight - 8f);
             var img = btnRt.gameObject.AddComponent<Image>();
             img.color = buttonColor;
             var btn = btnRt.gameObject.AddComponent<Button>();
@@ -70,16 +77,12 @@ public class KeyBindingsUI : MonoBehaviour
             var k = keyText.rectTransform;
             k.anchorMin = Vector2.zero; k.anchorMax = Vector2.one; k.offsetMin = k.offsetMax = Vector2.zero;
             _keyLabels[a] = keyText;
-            i++;
         }
 
-        // Réinitialiser
+        // Réinitialiser + aide, sous la liste
+        float yb = -rowsPerCol * rowHeight - 14f;
         var resetRt = NewRect("Reinitialiser", rt);
-        resetRt.anchorMin = new Vector2(0.58f, 1f);
-        resetRt.anchorMax = new Vector2(1f, 1f);
-        resetRt.pivot = new Vector2(0.5f, 1f);
-        resetRt.anchoredPosition = new Vector2(0f, -i * rowHeight - 10f);
-        resetRt.sizeDelta = new Vector2(0f, rowHeight - 4f);
+        PlaceAbs(resetRt, width - 280f, yb, 280f, rowHeight - 6f);
         var rImg = resetRt.gameObject.AddComponent<Image>();
         rImg.color = buttonColor;
         var rBtn = resetRt.gameObject.AddComponent<Button>();
@@ -89,14 +92,19 @@ public class KeyBindingsUI : MonoBehaviour
         var rr = rText.rectTransform;
         rr.anchorMin = Vector2.zero; rr.anchorMax = Vector2.one; rr.offsetMin = rr.offsetMax = Vector2.zero;
 
-        var hint = MakeText("Aide", rt, "Clique sur une touche puis appuie sur la nouvelle (Échap : annuler). Les flèches marchent toujours.",
-            fontSize - 6, TextAlignmentOptions.Left, new Color(0.62f, 0.60f, 0.57f));
-        hint.rectTransform.anchorMin = new Vector2(0f, 1f);
-        hint.rectTransform.anchorMax = new Vector2(0.56f, 1f);
-        hint.rectTransform.pivot = new Vector2(0f, 1f);
-        hint.rectTransform.anchoredPosition = new Vector2(0f, -i * rowHeight - 6f);
-        hint.rectTransform.sizeDelta = new Vector2(0f, rowHeight * 1.6f);
+        var hint = MakeText("Aide", rt, "Clique sur une touche, puis appuie sur la nouvelle (Échap pour annuler).\nLes flèches servent toujours à se déplacer, Échap à faire pause.",
+            Mathf.Max(16f, fontSize - 6f), TextAlignmentOptions.Left, new Color(0.62f, 0.60f, 0.57f));
+        PlaceAbs(hint.rectTransform, 0f, yb, width - 310f, rowHeight * 1.5f);
         hint.textWrappingMode = TextWrappingModes.Normal;
+    }
+
+    /// Place en haut à gauche du cadre : x vers la droite, y vers le bas (négatif).
+    private static void PlaceAbs(RectTransform r, float x, float y, float w, float h)
+    {
+        r.anchorMin = r.anchorMax = new Vector2(0f, 1f);
+        r.pivot = new Vector2(0f, 1f);
+        r.anchoredPosition = new Vector2(x, y);
+        r.sizeDelta = new Vector2(w, h);
     }
 
     private void StartListening(GameAction a)
