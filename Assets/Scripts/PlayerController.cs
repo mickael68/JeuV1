@@ -46,6 +46,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float flashlightAngle = 35f;
 
     // ── Accroupissement ──
+    // ── Taille de l'étudiant ──
+    [Header("Body")]
+    [Tooltip("Taille du joueur (m). Un étudiant de taille moyenne : ~1,70 m.")]
+    [SerializeField] private float bodyHeight = 1.68f;
+    [Tooltip("Hauteur des yeux (m), un peu sous le sommet du crâne.")]
+    [SerializeField] private float eyeHeight = 1.52f;
+
     [Header("Crouch")]
     [Tooltip("Maintenir Ctrl gauche ou C pour s'accroupir (tunnels, trous, bouches d'aération).")]
     [SerializeField] private float crouchHeight = 1.0f;
@@ -132,6 +139,11 @@ public class PlayerController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        // Gabarit d'étudiant : taille et hauteur des yeux
+        _controller.height = bodyHeight;
+        _controller.center = new Vector3(_controller.center.x, bodyHeight * 0.5f, _controller.center.z);
+        var camPos = _camera.transform.localPosition;
+        _camera.transform.localPosition = new Vector3(camPos.x, eyeHeight, camPos.z);
         _defaultCameraY = _camera.transform.localPosition.y;
         _standCameraY = _defaultCameraY;
         _standHeight = _controller.height;

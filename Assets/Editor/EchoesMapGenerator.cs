@@ -1561,12 +1561,12 @@ public static partial class EchoesMapGenerator
             player.transform.position = pos;
             player.transform.rotation = Quaternion.Euler(0, 180f, 0); // regarde vers la porte
             var cc = player.AddComponent<CharacterController>();
-            cc.height = 1.8f; cc.radius = 0.35f; cc.center = new Vector3(0, 0.9f, 0);
+            cc.height = 1.68f; cc.radius = 0.35f; cc.center = new Vector3(0, 0.84f, 0);
             cc.stepOffset = 0.3f; cc.slopeLimit = 50f;
 
             var cam = new GameObject("Camera");
             cam.transform.SetParent(player.transform, false);
-            cam.transform.localPosition = new Vector3(0, 1.6f, 0);
+            cam.transform.localPosition = new Vector3(0, 1.52f, 0);
             var c = cam.AddComponent<Camera>();
             c.nearClipPlane = 0.05f;
             cam.AddComponent<AudioListener>();
