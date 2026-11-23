@@ -192,7 +192,7 @@ public static partial class EchoesMapGenerator
         _mats = new Dictionary<string, Material>();
         _models = new Dictionary<string, GameObject>();
         ResetBoxMeshes();
-        _skipRealistic = false; _realisticPrepared = false;
+        _skipRealistic = false; _realisticPrepared = false; _generatorMarked = false;
         _rng = new System.Random(Seed);
         _layerGround = Layer("Ground"); _layerWalls = Layer("Walls");
         _layerFurniture = Layer("Furniture"); _layerNpc = Layer("NPC");
@@ -215,8 +215,9 @@ public static partial class EchoesMapGenerator
             _ventI = VentCandidates[_rng.Next(VentCandidates.Length)];
             _levels[-2].holesX = new Dictionary<Vector2Int, Hole>
                 { [new Vector2Int(_ventI, 0)] = new Hole(-HalfX + (_ventI + 0.5f) * Cell, 1f, _levels[-2].y, _levels[-2].y + 1.2f) };
+            // Le conduit d'aération débouche en hauteur dans le mur sud du -3 (on se laisse tomber)
             _levels[-3].holesX = new Dictionary<Vector2Int, Hole>
-                { [new Vector2Int(VentExitI, 0)] = new Hole(-HalfX + (VentExitI + 0.5f) * Cell, 1f, _levels[-3].y, _levels[-3].y + 1.2f) };
+                { [new Vector2Int(VentExitI, 0)] = new Hole(-HalfX + (VentExitI + 0.5f) * Cell, 1.05f, DuctY, DuctY + DuctH) };
 
             for (int i = 0; i < levels.Count; i++)
             {
@@ -232,7 +233,7 @@ public static partial class EchoesMapGenerator
             BuildExterior(root);
 
             BuildElevator(root);
-            BuildVentTunnel(root);
+            BuildVentMaze(root); // labyrinthe rampant -2 -> -3 (remplace l'ancien tunnel)
             BuildActors(root);
             EnsureSunPlayerAndSystems();
             SetupSky();
@@ -272,9 +273,10 @@ public static partial class EchoesMapGenerator
                 zMin = CorrS - RoomDepth; zMax = CorrN + RoomDepth;
                 BuildCorridorLevel(L, zMin, zMax, Repeat(4f, 10), Repeat(4f, 10));
                 break;
-            case Kind.Basement:
-                zMin = CorrS - RoomDepth; zMax = CorrN + RoomDepth;
-                BuildCorridorLevel(L, zMin, zMax, new[] { 12f, 8f, 6f, 14f }, Repeat(4f, 10));
+            case Kind.Basement:  // -1 : grand sous-sol (caves, laverie, locaux)
+            case Kind.Technical: // -2 : grands locaux techniques
+                BuildNodeLevel(L);
+                zMin = L.zMin; zMax = L.zMax;
                 break;
             case Kind.Maze:
                 BuildMazeLevel(L);

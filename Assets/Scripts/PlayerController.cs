@@ -100,6 +100,16 @@ public class PlayerController : MonoBehaviour
         _camera.transform.localPosition = cam;
     }
 
+    /// Déplace le joueur instantanément (pièges, chutes). Garde l'accroupissement en cours.
+    public void Teleport(Vector3 position, Quaternion rotation)
+    {
+        if (IsSeated) StandUp();
+        _controller.enabled = false;
+        transform.SetPositionAndRotation(position, Quaternion.Euler(0f, rotation.eulerAngles.y, 0f));
+        _velocity = Vector3.zero;
+        _controller.enabled = true;
+    }
+
     /// Se lever : retour à l'endroit d'où l'on s'est assis.
     public void StandUp()
     {

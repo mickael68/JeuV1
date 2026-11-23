@@ -81,11 +81,15 @@ public static class EchoesSnapshot
         }
 
         // Vue dynamique : premier studio abandonné du niveau 0 (repère posé par le générateur)
-        var studioView = GameObject.Find("◆ Vue_Studio_Abandonne");
+        foreach (var (markerName, file, height, pitch) in new[] {
+            ("◆ Vue_Studio_Abandonne", "niveau0_studio_abandonne", 1.1f, 18f),
+            ("◆ Conduit_Arrivee (ramper : accroupi)", "conduit_aeration", 0.35f, 5f) })
+        {
+        var studioView = GameObject.Find(markerName);
         if (studioView != null)
         {
-            camGo.transform.SetPositionAndRotation(studioView.transform.position + Vector3.up * 1.1f,
-                studioView.transform.rotation * Quaternion.Euler(18f, 0f, 0f));
+            camGo.transform.SetPositionAndRotation(studioView.transform.position + Vector3.up * height,
+                studioView.transform.rotation * Quaternion.Euler(pitch, 0f, 0f));
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.3f, 0.3f, 0.3f);
             var markerR = studioView.GetComponent<Renderer>();
@@ -96,8 +100,9 @@ public static class EchoesSnapshot
             var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
             tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
             tex.Apply();
-            File.WriteAllBytes("Captures/niveau0_studio_abandonne.png", tex.EncodeToPNG());
+            File.WriteAllBytes($"Captures/{file}.png", tex.EncodeToPNG());
             Object.DestroyImmediate(tex);
+        }
         }
 
         RenderTexture.active = null;
