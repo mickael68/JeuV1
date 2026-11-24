@@ -88,6 +88,7 @@ public static class EchoesSnapshot
             ("◆ Vue_Cuisine", "residence_cuisine", 1.6f, 12f),
             ("◆ Vue_Cour", "residence_cour", 1.6f, 0f),
             ("◆ Vue_Accueil", "residence_accueil", 1.6f, 8f),
+            ("◆ Vue_Salle_De_Bains", "residence_salle_de_bains", 1.55f, 20f),
             ("◆ Vue_Toilettes", "residence_toilettes", 1.6f, 12f),
             ("◆ Vue_Salle_Repos", "residence_salle_repos", 1.6f, 12f),
             ("◆ Vue_Aile_Exterieur", "residence_aile_exterieur", 1.7f, -2f),
