@@ -95,6 +95,7 @@ public static partial class EchoesMapGenerator
         // 1) Pelouse autour du bâtiment (trous : emprise du bâtiment + cages d'escalier qui montent jusqu'ici)
         var holes = new List<Rect> { Rect.MinMaxRect(-HalfX - 0.1f, CorrS - RoomDepth - 0.1f, HalfX + 0.1f, CorrN + RoomDepth + 0.1f) };
         holes.AddRange(_shaftRects);
+        holes.Add(WingFootprint); // aile nord
         GroundAround(ext, Rect.MinMaxRect(-GroundX, GroundZ0, GroundX, GroundZ1), holes, gy - Slab, gy, Mat("Exterieur_Herbe", Color.white));
 
         // 2) Façade en brique (peau extérieure des étages 1 à 3)
@@ -114,6 +115,7 @@ public static partial class EchoesMapGenerator
         foreach (var r in _shaftRects)
             if (r.xMax <= -HalfX + 0.5f) westHoles.Add(new Hole(r.center.y, r.height, fy0, FacadeTop));
         WallAlongZ(ext, "Facade_Ouest", xW, zS, zN, fy0, FacadeTop, mf, westHoles.ToArray());
+        BuildWingFacade(ext, mf, fy0);
 
         // Encadrement + perron + applique au-dessus de la porte
         var mPath = Mat("Exterieur_Allee", Color.white);
@@ -151,12 +153,14 @@ public static partial class EchoesMapGenerator
         // 5) Arbres : bois dense hors de la cour, quelques arbres dans la cour
         string[] trees = { KSurvival + "tree-autumn-tall", KSurvival + "tree-autumn", KSurvival + "tree-tall", KSurvival + "tree", KGraveyard + "pine", KGraveyard + "pine-crooked" };
         var keepOut = Rect.MinMaxRect(-HalfX - 8f, CorrS - RoomDepth - 4f, HalfX + 4f, CorrN + RoomDepth + 4f);
+        var wingOut = Rect.MinMaxRect(WX0 - 4f, WZ0, WX1 + 4f, WZ1 + 4f);
         int placed = 0;
         for (int tries = 0; tries < 600 && placed < 45; tries++) // arbres réalistes : coûteux, on en met moins
         {
             var p = new Vector2(Rand(-GroundX + 3f, GroundX - 3f), Rand(GroundZ0 + 3f, GroundZ1 - 3f));
             bool inYard = YardRect.Contains(p);
             if (inYard && (placed % 6 != 0)) continue;                   // ~1 sur 6 dans la cour
+            if (wingOut.Contains(p)) continue;
             if (inYard && (keepOut.Contains(p) || (p.x > HalfX && Mathf.Abs(p.y - ExitZ) < 4f))) continue;
             if (!inYard && Mathf.Abs(p.x - YardRect.xMax) < 2.5f && Mathf.Abs(p.y - ExitZ) < 3f) continue;
             if (Mathf.Abs(p.x - YardRect.xMin) < 1.5f || Mathf.Abs(p.x - YardRect.xMax) < 1.5f ||
@@ -182,6 +186,7 @@ public static partial class EchoesMapGenerator
                       : side == 2 ? new Vector2(HalfX + 1.2f, Mathf.Lerp(CorrS - RoomDepth, CorrN + RoomDepth, t))
                                   : new Vector2(-HalfX - 1.2f, Mathf.Lerp(CorrN + 3f, CorrN + RoomDepth, t));
                     if (side == 2 && Mathf.Abs(p.y - ExitZ) < 3f) continue;
+                    if (side == 1 && p.x > WX0 - 1f && p.x < WX1 + 1f) continue; // devant l'aile nord
                 }
                 else // le long de la clôture, côté cour
                 {
@@ -200,7 +205,7 @@ public static partial class EchoesMapGenerator
         for (int i = 0; i < 18; i++)
         {
             var p = new Vector2(Rand(YardRect.xMin + 3f, YardRect.xMax - 3f), Rand(YardRect.yMin + 3f, YardRect.yMax - 3f));
-            if (keepOut.Contains(p) || (p.x > HalfX && Mathf.Abs(p.y - ExitZ) < 3f)) continue;
+            if (keepOut.Contains(p) || wingOut.Contains(p) || (p.x > HalfX && Mathf.Abs(p.y - ExitZ) < 3f)) continue;
             float s = Rand(0.6f, 1.4f);
             Model(X, rocks[_rng.Next(rocks.Length)], new Vector3(p.x, gy, p.y), Rand(0f, 360f), new Vector3(s, s * 0.7f, s), mFence);
         }

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58287c0c60e9d954e8930160d209f6af, type: 3}
+  m_Name: passe_personnel
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  id: passe_personnel
+  displayName: Passe du personnel
+  description: "Un trousseau de cl\xE9s avec une \xE9tiquette plastifi\xE9e : \xAB
+    Personnel \u2014 R\xE9sidence du Parc \xBB. Ouvre les locaux r\xE9serv\xE9s."
+  kind: 1
+  model: {fileID: 3594394413386774707, guid: 8d160fe7577e1ca48ab57fb8dac5af4f, type: 3}
+  handSize: 0.13
+  stackable: 0
+  maxStack: 1
+  consumedOnUse: 0
+  keyId: passe_personnel
+  noteText: 
+  batteryCharge: 1

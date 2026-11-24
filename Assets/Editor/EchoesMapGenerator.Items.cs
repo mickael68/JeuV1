@@ -76,6 +76,7 @@ public static partial class EchoesMapGenerator
 
         _items["pile"] = SaveItem("pile", "Pile", "Une grosse pile pour lampe torche. Encore chargée, apparemment.", ItemKind.Battery, pile, 0.12f, i => { i.stackable = true; i.maxStack = 4; i.batteryCharge = 1f; });
         _items["cle_cave"] = SaveItem("cle_cave", "Clé de cave", "Une petite clé en laiton. L'étiquette indique : « Cave R. Lefèvre — sous-sol ».", ItemKind.Key, cle, 0.13f, i => i.keyId = "cave_lefevre");
+        _items[StaffKey] = SaveItem(StaffKey, "Passe du personnel", "Un trousseau de clés avec une étiquette plastifiée : « Personnel — Résidence du Parc ». Ouvre les locaux réservés.", ItemKind.Key, cle, 0.13f, i => i.keyId = StaffKey);
         _items["montre"] = SaveItem("montre", "Montre à gousset", "La vieille montre de ton grand-père. Elle avance un peu, mais elle marche.", ItemKind.Watch, montre, 0.11f, null);
         _items["carnet"] = SaveItem("carnet", "Carnet de R. Lefèvre", "Un carnet couvert de notes serrées. L'écriture devient de plus en plus nerveuse.", ItemKind.Note, carnet, 0.22f, i => i.noteText = NotebookText);
         for (int k = 0; k < NoteTexts.Length; k++)

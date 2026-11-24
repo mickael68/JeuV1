@@ -37,6 +37,7 @@ public static partial class EchoesMapGenerator
         for (int k = 0; k < 10; k++)
         {
             if (!north && k == ElevRoomIndex) continue;
+            if (north && k == WingRoomIndex) continue; // passage vers l'aile nord
             xs.Add(-HalfX + 4f * k + 2f);
         }
         return xs;
@@ -47,6 +48,7 @@ public static partial class EchoesMapGenerator
         if (L.kind != Kind.Dorm) return new Hole[0];
         var list = new List<Hole>();
         foreach (var x in StudioWindowXs(north)) list.Add(new Hole(x, WinW, L.y + WinSill, L.y + WinTop));
+        if (north) list.Add(new Hole(-HalfX + 4f * WingRoomIndex + 2f, 3f, L.y, L.y + DoorH + 0.2f)); // passage vers l'aile
         return list.ToArray();
     }
 

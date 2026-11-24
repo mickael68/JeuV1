@@ -25,6 +25,15 @@ public static partial class EchoesMapGenerator
         if (go == null) return null;
         foreach (var r in go.GetComponentsInChildren<Renderer>())
             foreach (var m in r.sharedMaterials) NoSkyReflection(m);
+        // Le câble de la radio a un maillage invalide (refusé par le NavMesh) : on le retire
+        foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
+            if (mf.sharedMesh != null && mf.sharedMesh.name.Contains("cable_curve"))
+            {
+                if (PrefabUtility.IsPartOfPrefabInstance(go)) PrefabUtility.UnpackPrefabInstance(go, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                Object.DestroyImmediate(mf.gameObject);
+            }
+        // Petit objet de décor : hors du calcul des chemins (certains maillages Poly Haven y sont refusés)
+        if (!collider) go.AddComponent<Unity.AI.Navigation.NavMeshModifier>().ignoreFromBuild = true;
         if (collider && TryBounds(go, out var b))
         {
             var bc = go.AddComponent<BoxCollider>();

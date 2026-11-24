@@ -226,12 +226,14 @@ public static partial class EchoesMapGenerator
             _levels[-3].holesX = new Dictionary<Vector2Int, Hole>
                 { [new Vector2Int(VentExitI, 0)] = new Hole(-HalfX + (VentExitI + 0.5f) * Cell, 1.05f, DuctY, DuctY + DuctH) };
 
+            _cctvCams.Clear(); _cctvSystem = null;
             for (int i = 0; i < levels.Count; i++)
             {
                 var L = levels[i];
                 EditorUtility.DisplayProgressBar("The Echoes Below", "Construction : " + L.name, (float)i / levels.Count);
                 BuildLevel(root, L);
             }
+            ConnectCctv(); // caméras de tous les étages → écrans du poste de surveillance
 
             var shaftRoot = new GameObject("Cages_Escalier").transform;
             shaftRoot.SetParent(root, false);
@@ -281,6 +283,7 @@ public static partial class EchoesMapGenerator
             case Kind.Inverted:
                 zMin = CorrS - RoomDepth; zMax = CorrN + RoomDepth;
                 BuildCorridorLevel(L, zMin, zMax, Repeat(4f, 10), Repeat(4f, 10));
+                if (L.kind == Kind.Dorm) { BuildWing(L); zMax = WZ1; } // aile nord : cafétéria, étude, jeux, toilettes, personnel
                 break;
             case Kind.Basement:  // -1 : grand sous-sol (caves, laverie, locaux)
             case Kind.Technical: // -2 : grands locaux techniques
@@ -404,12 +407,15 @@ public static partial class EchoesMapGenerator
         {
             float w = widths[k];
             bool elevatorLobby = L.kind == Kind.Dorm && !north && k == ElevRoomIndex;
+            bool wingPassage = L.kind == Kind.Dorm && north && k == WingRoomIndex;          // passage vers l'aile nord
+            bool surveillance = L.kind == Kind.Dorm && north && L.number == 1 && k == SurveillanceRoomIndex;
             float doorW = L.kind == Kind.Basement && w > 6f ? 1.8f : 1.1f;
             if (elevatorLobby) doorW = 1.6f;
+            if (wingPassage) doorW = 3f;
             if (L.kind == Kind.Abandoned && _rng.NextDouble() < 0.3) doorW = 2.4f; // porte arrachée
             holes.Add(new Hole(x + w * 0.5f, doorW, L.y, L.y + DoorH - 0.1f));
             // Chaque studio (résidence et résidence inversée) a sa porte ; pas le palier de l'ascenseur
-            if ((L.kind == Kind.Dorm || L.kind == Kind.Inverted) && !elevatorLobby)
+            if ((L.kind == Kind.Dorm || L.kind == Kind.Inverted) && !elevatorLobby && !wingPassage)
                 BuildStudioDoor(L, x + w * 0.5f, doorW, zc, k, north);
 
             if (k < widths.Length - 1)
@@ -420,7 +426,9 @@ public static partial class EchoesMapGenerator
             }
 
             var room = Rect.MinMaxRect(x, zLo, x + w, zHi);
-            if (!elevatorLobby) Furnish(L, room, north, k, widths.Length); // palier construit par BuildElevator
+            if (surveillance) FurnishSurveillance(L, room);
+            else if (wingPassage) CeilingLight(L, L.props, new Vector3(room.center.x, L.y + L.h, room.center.y), 6f);
+            else if (!elevatorLobby) Furnish(L, room, north, k, widths.Length); // palier construit par BuildElevator
             x += w;
         }
 
