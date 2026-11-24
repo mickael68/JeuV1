@@ -21,6 +21,8 @@ public static class EchoesSnapshot
         new View { name = "exterieur_ville_jour", pos = new Vector3(30f, 5.4f, -2.5f), euler = new Vector3(-2, 55, 0), ambient = 0.5f },
         new View { name = "exterieur_ville_nuit", pos = new Vector3(30f, 5.4f, -2.5f), euler = new Vector3(-2, 55, 0), ambient = 0.08f, sky = "Ciel_Nuit" },
         new View { name = "exterieur_collines",   pos = new Vector3(-30f, 5.4f, 20f),  euler = new Vector3(-3, 300, 0), ambient = 0.5f },
+        new View { name = "exterieur_panorama",   pos = new Vector3(16f, 16.5f, 30f), euler = new Vector3(4, 20, 0), ambient = 0.5f },
+        new View { name = "exterieur_montagnes",  pos = new Vector3(-20f, 16.5f, -12f), euler = new Vector3(2, 230, 0), ambient = 0.5f },
         new View { name = "etage1_studio",        pos = new Vector3(-10f, 5.0f, -0.3f), euler = new Vector3(15, 10, 0), ambient = 0.45f },
         new View { name = "niveau-1_caves",       pos = new Vector3(-6f, -2.9f, -0.5f), euler = new Vector3(15, 20, 0), ambient = 0.3f },
         new View { name = "niveau0_hall",    pos = new Vector3(-2f, 1.6f, -1f),     euler = new Vector3(5, 0, 0),   ambient = 0.25f },
