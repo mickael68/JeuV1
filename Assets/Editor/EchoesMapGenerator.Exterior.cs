@@ -111,7 +111,8 @@ public static partial class EchoesMapGenerator
         }
         WallAlongX(ext, "Facade_Sud", zS, xW - 0.1f, xE + 0.1f, fy0, FacadeTop, mf, winS.ToArray());
         WallAlongX(ext, "Facade_Nord", zN, xW - 0.1f, xE + 0.1f, fy0, FacadeTop, mf, winN.ToArray());
-        WallAlongZ(ext, "Facade_Est", xE, zS, zN, fy0, FacadeTop, mf, new Hole(ExitZ, ExitW, gy, gy + DoorH));
+        WallAlongZ(ext, "Facade_Est", xE, zS, zN, fy0, FacadeTop, mf, new Hole(ExitZ, ExitW, gy, gy + DoorH),
+            new Hole(ExitZ, WinW, _levels[2].y + WinSill, _levels[2].y + WinTop), new Hole(ExitZ, WinW, _levels[3].y + WinSill, _levels[3].y + WinTop));
         var westHoles = new List<Hole>();
         foreach (var r in _shaftRects)
             if (r.xMax <= -HalfX + 0.5f) westHoles.Add(new Hole(r.center.y, r.height, fy0, FacadeTop));
@@ -121,10 +122,8 @@ public static partial class EchoesMapGenerator
         // Encadrement + perron + applique au-dessus de la porte
         var mPath = Mat("Exterieur_Allee", Color.white);
         Box(ext, "Perron", new Vector3(xE + 0.1f, gy, ExitZ - 1.8f), new Vector3(xE + 2.6f, gy + 0.04f, ExitZ + 1.8f), mPath, _layerGround);
-        Box(ext, "Auvent", new Vector3(xE + 0.1f, gy + 2.7f, ExitZ - 1.4f), new Vector3(xE + 1.3f, gy + 2.85f, ExitZ + 1.4f), Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f), _layerWalls);
-        var lamp = PointLight(X, new Vector3(xE + 0.6f, gy + 2.5f, ExitZ), 9f, ext);
+        var lamp = PointLight(X, new Vector3(xE + 1.1f, gy + 2.5f, ExitZ), 9f, ext); // sous la marquise (DecorateFacades)
         lamp.shadows = LightShadows.Soft;
-        Cube(ext, "Applique", new Vector3(xE + 0.15f, gy + 2.55f, ExitZ + 0.9f), new Vector3(0.12f, 0.25f, 0.18f), Quaternion.identity, Mat("Lampe_Allumee", new Color(1f, 0.85f, 0.6f), 0.8f), false, -1);
 
         // 3) Allée vers le portail (est)
         float pz0 = ExitZ - 1.1f, pz1 = ExitZ + 1.1f;
@@ -210,7 +209,10 @@ public static partial class EchoesMapGenerator
             float s = Rand(0.6f, 1.4f);
             Model(X, rocks[_rng.Next(rocks.Length)], new Vector3(p.x, gy, p.y), Rand(0f, 360f), new Vector3(s, s * 0.7f, s), mFence);
         }
-        // 6) Décor lointain : collines boisées, petite ville
+        // 6) Habillage des façades, toits, entrée, massifs, abri à vélos
+        DecorateFacades(ext, X, gy, fy0);
+
+        // 7) Décor lointain : collines boisées, petite ville
         BuildBackdrop(X);
     }
 

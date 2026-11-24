@@ -93,7 +93,11 @@ public static partial class EchoesMapGenerator
         ["Porte_Technique"] = new Surface("rusty_metal_02", 1.5f, G(0.7f), 0.5f),
         ["Porte_Studio_-5"] = new Surface("wood_table_001", 1.2f, T(0.7f, 0.35f, 0.35f)),
         ["Porte_Sortie"] = new Surface("wood_table_001", 1.2f, T(0.6f, 0.45f, 0.35f)),
-        ["Exterieur_Herbe"] = new Surface("leafy_grass", 3f, G(0.9f)),
+        ["Exterieur_Herbe"] = new Surface("leafy_grass", 3f, T(0.78f, 0.92f, 0.68f)),
+        ["Facade_Soubassement"] = new Surface("concrete_wall_008", 2f, G(0.7f)),
+        ["Facade_Bandeau"] = new Surface("brushed_concrete", 2f, T(1f, 0.97f, 0.9f)),
+        ["Toit_Gravier"] = new Surface("concrete_floor_worn_001", 3f, G(0.55f)),
+        ["Massif_Terre"] = new Surface("dirt_floor", 2f, G(0.6f)),
         ["Exterieur_Allee"] = new Surface("concrete_pavement", 2f, G(0.85f)),
         ["Facade_Brique"] = new Surface("red_brick_03", 2.5f, G(0.9f)),
         ["Sol_Carrelage"] = new Surface("worn_tile_floor", 1.6f, G(0.95f)), // cafétéria, toilettes

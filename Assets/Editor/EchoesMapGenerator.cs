@@ -366,6 +366,7 @@ public static partial class EchoesMapGenerator
         var eastHoles = new List<Hole>(ShaftDoor(L, L.doorEast));
         bool exit = L.kind == Kind.Dorm && L.number == 1; // niveau 1 : porte de sortie vers l'extérieur
         if (exit) eastHoles.Add(new Hole(ExitZ, ExitW, y0, y0 + DoorH));
+        if (L.kind == Kind.Dorm && L.number >= 2) eastHoles.Add(new Hole(ExitZ, WinW, y0 + WinSill, y0 + WinTop)); // fenêtre au bout du couloir
         WallAlongZ(L.root, "Mur_Est", HalfX, zMin, zMax, y0, y1, mw, eastHoles.ToArray());
         if (exit) BuildExitDoor(L);
         WallAlongZ(L.root, "Mur_Ouest", -HalfX, zMin, zMax, y0, y1, mw, ShaftDoor(L, L.doorWest));
