@@ -32,24 +32,37 @@ public static partial class EchoesMapGenerator
         var sides = new[] { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
         int lockers = 0, leaks = 0, puddles = 0;
 
+        // Plafond : un tuyau continu par ligne droite de couloir, qui rentre dans le mur à chaque bout (bride).
+        // Hauteurs sous le plafond toutes différentes : les tuyaux en x passent au-dessus de ceux en z sans se toucher.
+        float hxBig = 0.25f, hxThin = technical ? 0.1f : 0.08f, hzBig = technical ? 0.6f : 0.5f, hzThin = 0.65f;
+        float edge = MazeP * 0.5f - Wall * 0.5f;
+        for (int j = 0; j < MazeNZ; j++)
+            for (int i = 0; i < MazeNX; i++)
+            {
+                if (!Corridor(i, j) || !east[i, j] || !Corridor(i + 1, j) || (i > 0 && east[i - 1, j] && Corridor(i - 1, j))) continue;
+                int e = i;
+                while (e + 1 < MazeNX && east[e, j] && Corridor(e + 1, j)) e++;
+                float xa = Node(i, j).x - edge, xb = Node(e, j).x + edge, zc = Node(i, j).z;
+                CeilingRun(parent, new Vector3(xa, L.y + L.h - hxBig, zc + 1.35f), Vector3.right, xb - xa, technical ? 0.14f : 0.07f, pipeMat, technical ? PipeStyle.Industrial : PipeStyle.Metal);
+                CeilingRun(parent, new Vector3(xa, L.y + L.h - hxThin, zc + 1.0f), Vector3.right, xb - xa, 0.035f, thinMat, technical ? PipeStyle.Thin : PipeStyle.ThinPvc);
+            }
+        for (int i = 0; i < MazeNX; i++)
+            for (int j = 0; j < MazeNZ; j++)
+            {
+                if (!Corridor(i, j) || !north[i, j] || !Corridor(i, j + 1) || (j > 0 && north[i, j - 1] && Corridor(i, j - 1))) continue;
+                int e = j;
+                while (e + 1 < MazeNZ && north[i, e] && Corridor(i, e + 1)) e++;
+                float za = Node(i, j).z - edge, zb = Node(i, e).z + edge, xc = Node(i, j).x;
+                CeilingRun(parent, new Vector3(xc - 1.1f, L.y + L.h - hzBig, za), Vector3.forward, zb - za, technical ? 0.1f : 0.055f, pipeMat, technical ? PipeStyle.Industrial : PipeStyle.Metal);
+                if (!technical) CeilingRun(parent, new Vector3(xc - 0.8f, L.y + L.h - hzThin, za), Vector3.forward, zb - za, 0.035f, thinMat, PipeStyle.ThinPvc);
+            }
+
         for (int i = 0; i < MazeNX; i++)
             for (int j = 0; j < MazeNZ; j++)
             {
                 if (!Corridor(i, j)) continue;
                 var c = Node(i, j);
                 bool isStart = i == start.x && j == start.y, isTrap = technical && i == trapNode.x && j == trapNode.y;
-
-                // Plafond : réseaux qui suivent les couloirs (positions fixes → lignes continues d'un nœud à l'autre)
-                if (east[i, j] && Corridor(i + 1, j))
-                {
-                    Pipe(parent, c + new Vector3(MazeP * 0.5f, L.h - 0.3f, 1.35f), Vector3.right, MazeP, technical ? 0.14f : 0.07f, pipeMat, technical ? PipeStyle.Industrial : PipeStyle.Metal);
-                    Pipe(parent, c + new Vector3(MazeP * 0.5f, L.h - 0.22f, 1.05f), Vector3.right, MazeP, 0.035f, thinMat, technical ? PipeStyle.Thin : PipeStyle.ThinPvc);
-                }
-                if (north[i, j] && Corridor(i, j + 1))
-                {
-                    Pipe(parent, c + new Vector3(-1.35f, L.h - 0.5f, MazeP * 0.5f), Vector3.forward, MazeP, technical ? 0.1f : 0.055f, pipeMat, technical ? PipeStyle.Industrial : PipeStyle.Metal);
-                    Pipe(parent, c + new Vector3(-1.05f, L.h - 0.22f, MazeP * 0.5f), Vector3.forward, MazeP, 0.035f, thinMat, technical ? PipeStyle.Thin : PipeStyle.ThinPvc);
-                }
 
                 // Murs : tuyaux continus (-2), gaine électrique haute (-1), casiers et boîtiers
                 foreach (var d in sides)
@@ -71,18 +84,20 @@ public static partial class EchoesMapGenerator
                         return !Corridor(a, b) || Linked(a, b, d);
                     }
                     bool endLo = WallEnds(-1), endHi = WallEnds(1);
+                    // Coin rentrant : le tuyau s'arrête là où il rejoint celui du mur perpendiculaire
+                    bool cornerLo = !Linked(i, j, new Vector2Int(d.y, -d.x)), cornerHi = !Linked(i, j, new Vector2Int(-d.y, d.x));
 
                     if (technical)
                     {
-                        WallPipe(parent, face, inward, along, 0.2f, L.h - 0.95f, 0.12f, endLo, endHi, pipeMat, PipeStyle.Industrial);
-                        WallPipe(parent, face, inward, along, 0.12f, L.h - 1.3f, 0.06f, endLo, endHi, pipeMat, PipeStyle.Metal);
+                        WallPipe(parent, face, inward, along, 0.2f, L.h - 0.95f, 0.12f, endLo, endHi, pipeMat, PipeStyle.Industrial, cornerLo, cornerHi);
+                        WallPipe(parent, face, inward, along, 0.12f, L.h - 1.3f, 0.06f, endLo, endHi, pipeMat, PipeStyle.Metal, cornerLo, cornerHi);
                         if (!roomBehind && !stairDoor && _rng.NextDouble() < 0.18) // coulure de rouille sous un raccord
                             Cube(parent, "Coulure_Rouille", face + inward * 0.005f + Vector3.up * (L.h - 1.9f) + along * Rand(-1.2f, 1.2f),
                                 new Vector3(Rand(0.15f, 0.35f), Rand(0.9f, 1.6f), 0.01f), Quaternion.LookRotation(inward), Mat("Rouille_Coulure", new Color(0.22f, 0.11f, 0.05f), 0.4f), false, -1);
                     }
                     else
                     {
-                        WallPipe(parent, face, inward, along, 0.06f, L.h - 0.35f, 0.04f, endLo, endHi, thinMat, PipeStyle.ThinPvc);
+                        WallPipe(parent, face, inward, along, 0.06f, L.h - 0.9f, 0.04f, endLo, endHi, thinMat, PipeStyle.ThinPvc, cornerLo, cornerHi);
                         if (!roomBehind && !stairDoor && !isStart)
                         {
                             double roll = _rng.NextDouble();
@@ -229,9 +244,12 @@ public static partial class EchoesMapGenerator
     }
 
     /// Tuyau le long d'un mur, sur toute la case ; aux bouts où le mur s'arrête, il fait un coude et rentre dans le mur.
-    static void WallPipe(Transform p, Vector3 face, Vector3 inward, Vector3 along, float off, float height, float radius, bool endLo, bool endHi, Material m, PipeStyle style)
+    static void WallPipe(Transform p, Vector3 face, Vector3 inward, Vector3 along, float off, float height, float radius, bool endLo, bool endHi, Material m, PipeStyle style,
+                         bool cornerLo = false, bool cornerHi = false)
     {
-        float lo = endLo ? -MazeP * 0.5f + 0.35f : -MazeP * 0.5f, hi = endHi ? MazeP * 0.5f - 0.35f : MazeP * 0.5f;
+        float cornerT = MazeP * 0.5f - Wall * 0.5f - off;     // axe du tuyau du mur perpendiculaire
+        float lo = endLo ? -MazeP * 0.5f + 0.35f : cornerLo ? -cornerT : -MazeP * 0.5f;
+        float hi = endHi ? MazeP * 0.5f - 0.35f : cornerHi ? cornerT : MazeP * 0.5f;
         var basePt = face + inward * off + Vector3.up * height;
         Pipe(p, basePt + along * ((lo + hi) * 0.5f), along, hi - lo, radius, m, style);
         m = KitMaterial(style) ?? m; // coude et bride assortis au modèle
@@ -242,6 +260,15 @@ public static partial class EchoesMapGenerator
             Pipe(p, corner - inward * (off * 0.5f), inward, off + radius, radius, m);                       // coude vers le mur
             Pipe(p, face + inward * 0.015f + along * t + Vector3.up * height, inward, 0.03f, radius * 1.5f, m); // bride contre le mur
         }
+    }
+
+    /// Tuyau de plafond de "start" sur "length" selon "dir", avec une bride contre le mur à chaque bout.
+    static void CeilingRun(Transform p, Vector3 start, Vector3 dir, float length, float radius, Material m, PipeStyle style)
+    {
+        Pipe(p, start + dir * (length * 0.5f), dir, length, radius, m, style);
+        var fm = KitMaterial(style) ?? m;
+        Pipe(p, start + dir * 0.02f, dir, 0.04f, radius * 1.6f, fm);
+        Pipe(p, start + dir * (length - 0.02f), dir, 0.04f, radius * 1.6f, fm);
     }
 
     /// Tuyau horizontal centré sur "center", orienté selon "axis".
@@ -319,11 +346,12 @@ public static partial class EchoesMapGenerator
     static void BrokenPipe(LevelDef L, Transform p, Vector3 c, Material m)
     {
         float yaw = Rand(0f, 360f), tilt = Rand(35f, 60f), len = Rand(1.6f, 2.4f);
-        var anchor = c + Vector3.up * (L.h - 0.3f);
+        var anchor = c + Vector3.up * (L.h + 0.05f);   // part du plafond (arraché de son support)
         var dirDown = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(90f - tilt, 0f, 0f) * Vector3.forward; // vers le bas, en biais
         var end = anchor + dirDown * len;
         if (end.y < L.y + 0.8f) end = new Vector3(end.x, L.y + 0.8f, end.z);
         var mid = (anchor + end) * 0.5f;
+        Cylinder(p, "Support_Arrache", c + Vector3.up * (L.h - 0.03f), 0.2f, 0.06f, Quaternion.identity, KitMaterial(PipeStyle.Industrial) ?? m, false);
         if (!KitPipe(p, mid, (end - anchor).normalized, Vector3.Distance(anchor, end), 0.1f, PipeStyle.Industrial))
             Cylinder(p, "Tuyau_Arrache", mid, 0.1f, Vector3.Distance(anchor, end), Quaternion.FromToRotation(Vector3.up, (end - anchor).normalized), m, false);
         Drips(p, end + Vector3.down * 0.05f, end.y - L.y, Rand(4f, 9f));
