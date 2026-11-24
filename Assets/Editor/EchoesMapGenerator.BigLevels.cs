@@ -227,8 +227,17 @@ public static partial class EchoesMapGenerator
             double roll = _rng.NextDouble();
             if (roll < 0.62) // néon qui marche (grésille un peu, selon l'étage)
             {
-                PointLight(L, new Vector3(c.x, y1 - 0.4f, c.z), technical ? 10f : 9f);
-                Cube(L.props, "Neon_Tube", new Vector3(c.x, y1 - 0.06f, c.z), new Vector3(1.15f, 0.04f, 0.06f), Quaternion.Euler(0, yaw, 0), NeonTubeMat(), false, -1);
+                // Lampe grillagée suspendue (Poly Haven) ; repli : simple tube
+                var lamp = InstantiateAt(L, PolyHavenModels.FbxPath("caged_hanging_light"), new Vector3(c.x, y0, c.z), yaw, new Vector3(0.45f, 0.9f, 0.45f));
+                float lightY = y1 - 0.4f;
+                if (lamp != null && TryBounds(lamp, out var lb))
+                {
+                    lamp.transform.position += Vector3.up * (y1 - lb.max.y); // accrochée au plafond
+                    lightY = y1 - lb.size.y + 0.15f;
+                    foreach (var r in lamp.GetComponentsInChildren<Renderer>()) foreach (var m in r.sharedMaterials) NoSkyReflection(m);
+                }
+                else Cube(L.props, "Neon_Tube", new Vector3(c.x, y1 - 0.06f, c.z), new Vector3(1.15f, 0.04f, 0.06f), Quaternion.Euler(0, yaw, 0), NeonTubeMat(), false, -1);
+                PointLight(L, new Vector3(c.x, lightY, c.z), technical ? 10f : 9f);
             }
             else
                 Neon(L, new Vector3(c.x, y1, c.z), yaw, roll < 0.85 ? FailingLight.Mode.Failing : roll < 0.95 ? FailingLight.Mode.Dying : FailingLight.Mode.Dead, _rng.NextDouble() < 0.3);

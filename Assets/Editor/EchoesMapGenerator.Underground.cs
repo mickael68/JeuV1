@@ -20,6 +20,7 @@ public static partial class EchoesMapGenerator
         bool Linked(int i, int j, Vector2Int d) =>
             d.x > 0 ? east[i, j] : d.x < 0 ? i > 0 && east[i - 1, j] : d.y > 0 ? north[i, j] : j > 0 && north[i, j - 1];
 
+        _pipeKit = null; // recharge les modèles à chaque génération
         var pipeMat = Mat("Metal_" + L.number, new Color(0.35f, 0.33f, 0.3f));
         var thinMat = Mat("Gaine_" + L.number, technical ? new Color(0.2f, 0.18f, 0.16f) : new Color(0.42f, 0.42f, 0.4f), 0.35f);
         var lockerMat = Mat("Casier", new Color(0.45f, 0.5f, 0.52f));
@@ -41,13 +42,13 @@ public static partial class EchoesMapGenerator
                 // Plafond : réseaux qui suivent les couloirs (positions fixes → lignes continues d'un nœud à l'autre)
                 if (east[i, j] && Corridor(i + 1, j))
                 {
-                    Pipe(parent, c + new Vector3(MazeP * 0.5f, L.h - 0.3f, 1.35f), Vector3.right, MazeP, technical ? 0.14f : 0.07f, pipeMat);
-                    Pipe(parent, c + new Vector3(MazeP * 0.5f, L.h - 0.22f, 1.05f), Vector3.right, MazeP, 0.035f, thinMat);
+                    Pipe(parent, c + new Vector3(MazeP * 0.5f, L.h - 0.3f, 1.35f), Vector3.right, MazeP, technical ? 0.14f : 0.07f, pipeMat, technical ? PipeStyle.Industrial : PipeStyle.Metal);
+                    Pipe(parent, c + new Vector3(MazeP * 0.5f, L.h - 0.22f, 1.05f), Vector3.right, MazeP, 0.035f, thinMat, technical ? PipeStyle.Thin : PipeStyle.ThinPvc);
                 }
                 if (north[i, j] && Corridor(i, j + 1))
                 {
-                    Pipe(parent, c + new Vector3(-1.35f, L.h - 0.5f, MazeP * 0.5f), Vector3.forward, MazeP, technical ? 0.1f : 0.055f, pipeMat);
-                    Pipe(parent, c + new Vector3(-1.05f, L.h - 0.22f, MazeP * 0.5f), Vector3.forward, MazeP, 0.035f, thinMat);
+                    Pipe(parent, c + new Vector3(-1.35f, L.h - 0.5f, MazeP * 0.5f), Vector3.forward, MazeP, technical ? 0.1f : 0.055f, pipeMat, technical ? PipeStyle.Industrial : PipeStyle.Metal);
+                    Pipe(parent, c + new Vector3(-1.05f, L.h - 0.22f, MazeP * 0.5f), Vector3.forward, MazeP, 0.035f, thinMat, technical ? PipeStyle.Thin : PipeStyle.ThinPvc);
                 }
 
                 // Murs : tuyaux continus (-2), gaine électrique haute (-1), casiers et boîtiers
@@ -73,15 +74,15 @@ public static partial class EchoesMapGenerator
 
                     if (technical)
                     {
-                        WallPipe(parent, face, inward, along, 0.2f, L.h - 0.95f, 0.12f, endLo, endHi, pipeMat);
-                        WallPipe(parent, face, inward, along, 0.12f, L.h - 1.3f, 0.06f, endLo, endHi, pipeMat);
+                        WallPipe(parent, face, inward, along, 0.2f, L.h - 0.95f, 0.12f, endLo, endHi, pipeMat, PipeStyle.Industrial);
+                        WallPipe(parent, face, inward, along, 0.12f, L.h - 1.3f, 0.06f, endLo, endHi, pipeMat, PipeStyle.Metal);
                         if (!roomBehind && !stairDoor && _rng.NextDouble() < 0.18) // coulure de rouille sous un raccord
                             Cube(parent, "Coulure_Rouille", face + inward * 0.005f + Vector3.up * (L.h - 1.9f) + along * Rand(-1.2f, 1.2f),
                                 new Vector3(Rand(0.15f, 0.35f), Rand(0.9f, 1.6f), 0.01f), Quaternion.LookRotation(inward), Mat("Rouille_Coulure", new Color(0.22f, 0.11f, 0.05f), 0.4f), false, -1);
                     }
                     else
                     {
-                        WallPipe(parent, face, inward, along, 0.06f, L.h - 0.35f, 0.04f, endLo, endHi, thinMat);
+                        WallPipe(parent, face, inward, along, 0.06f, L.h - 0.35f, 0.04f, endLo, endHi, thinMat, PipeStyle.ThinPvc);
                         if (!roomBehind && !stairDoor && !isStart)
                         {
                             double roll = _rng.NextDouble();
@@ -125,6 +126,98 @@ public static partial class EchoesMapGenerator
         Debug.Log($"[EchoesMap] Habillage du {L.number} : {lockers} rangées de casiers, {leaks} fuites, {puddles} flaques.");
     }
 
+    // ───────────────────────── Tuyaux Poly Haven (modèles modulaires) ─────────────────────────
+
+    enum PipeStyle { None, Industrial, Metal, Thin, ThinPvc }
+
+    struct KitPiece { public Mesh mesh; public Material[] mats; public int axis; public float natLen; }
+    static Dictionary<PipeStyle, KitPiece> _pipeKit;
+
+    /// Une pièce droite par style : modular_industrial_pipes_01 (gros tuyaux à brides, -2)
+    /// et modular_pipes (tuyaux métal, fins en métal ou en PVC).
+    static void LoadPipeKit()
+    {
+        _pipeKit = new Dictionary<PipeStyle, KitPiece>();
+        PolyHavenModels.PrepareAll(false);
+        AddKit(PipeStyle.Industrial, "modular_industrial_pipes_01", null);
+        AddKit(PipeStyle.Metal, "modular_pipes", "pipe_200cm_metal");
+        AddKit(PipeStyle.Thin, "modular_pipes", "pipe_thin_200cm_metal");
+        AddKit(PipeStyle.ThinPvc, "modular_pipes", "pipe_thin_200cm_pvc");
+        var info = "";
+        foreach (var kv in _pipeKit)
+        {
+            foreach (var m in kv.Value.mats) NoSkyReflection(m);
+            info += $" · {kv.Key} = {kv.Value.mesh.name} ({kv.Value.natLen:0.00} m)";
+        }
+        Debug.Log($"[EchoesMap] Tuyaux Poly Haven : {_pipeKit.Count} styles{info}");
+    }
+
+    /// child = nom de la pièce ; null = la plus longue pièce droite du modèle.
+    static void AddKit(PipeStyle style, string id, string child)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PolyHavenModels.FbxPath(id));
+        if (prefab == null) { Debug.LogWarning("[EchoesMap] Modèle introuvable : " + id); return; }
+        KitPiece best = default;
+        float bestLen = -1f;
+        foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+        {
+            if (mf.sharedMesh == null || (child != null && mf.name != child)) continue;
+            var size = mf.sharedMesh.bounds.size;
+            var M = mf.transform.localToWorldMatrix;
+            var w = new Vector3(M.MultiplyVector(Vector3.right).magnitude * size.x,
+                                M.MultiplyVector(Vector3.up).magnitude * size.y,
+                                M.MultiplyVector(Vector3.forward).magnitude * size.z);
+            int ax = w.x >= w.y && w.x >= w.z ? 0 : w.y >= w.z ? 1 : 2;
+            float a = w[(ax + 1) % 3], b = w[(ax + 2) % 3];
+            bool straight = Mathf.Max(a, b) / Mathf.Max(0.001f, Mathf.Min(a, b)) < 1.4f && w[ax] > 3f * Mathf.Max(a, b);
+            if (child == null && !straight) continue;
+            if (w[ax] <= bestLen) continue;
+            bestLen = w[ax];
+            best = new KitPiece { mesh = mf.sharedMesh, mats = mf.GetComponent<MeshRenderer>().sharedMaterials, axis = ax, natLen = w[ax] };
+        }
+        if (bestLen > 0f) _pipeKit[style] = best;
+        else Debug.LogWarning($"[EchoesMap] Pièce de tuyau introuvable : {id}/{child ?? "(droite)"}");
+    }
+
+    static Material KitMaterial(PipeStyle style)
+    {
+        if (_pipeKit == null) LoadPipeKit();
+        return _pipeKit.TryGetValue(style, out var k) && k.mats.Length > 0 ? k.mats[0] : null;
+    }
+
+    /// Tuyau droit fait de pièces du modèle mises bout à bout (étirées pour tomber juste).
+    static bool KitPipe(Transform p, Vector3 center, Vector3 dir, float length, float radius, PipeStyle style)
+    {
+        if (_pipeKit == null) LoadPipeKit();
+        if (!_pipeKit.TryGetValue(style, out var k)) return false;
+        var b = k.mesh.bounds;
+        var axVec = k.axis == 0 ? Vector3.right : k.axis == 1 ? Vector3.up : Vector3.forward;
+        float meshLen = b.size[k.axis], meshWidth = Mathf.Max(b.size[(k.axis + 1) % 3], b.size[(k.axis + 2) % 3]);
+        int n = Mathf.Max(1, Mathf.RoundToInt(length / Mathf.Max(0.3f, k.natLen)));
+        float seg = length / n;
+        float width = 2f * radius * (style == PipeStyle.Industrial ? 1.45f : 1f); // les brides dépassent du tuyau
+        var scale = Vector3.one * (width / Mathf.Max(0.0001f, meshWidth));
+        scale[k.axis] = seg / Mathf.Max(0.0001f, meshLen);
+        dir = dir.normalized;
+        var rot = Quaternion.FromToRotation(axVec, dir);
+        for (int i = 0; i < n; i++)
+        {
+            var c = center + dir * (-length * 0.5f + seg * (i + 0.5f));
+            var go = new GameObject("Tuyau_" + style);
+            go.transform.SetParent(p, false);
+            go.transform.rotation = rot;
+            go.transform.localScale = scale;
+            go.transform.position = c - rot * Vector3.Scale(b.center, scale);
+            go.AddComponent<MeshFilter>().sharedMesh = k.mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterials = k.mats;
+            mr.shadowCastingMode = radius < 0.05f ? UnityEngine.Rendering.ShadowCastingMode.Off : UnityEngine.Rendering.ShadowCastingMode.On;
+            go.layer = _layerFurniture;
+            GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
+        }
+        return true;
+    }
+
     // ───────────────────────── Éléments ─────────────────────────
 
     static void NoSkyReflection(Material m)
@@ -136,11 +229,12 @@ public static partial class EchoesMapGenerator
     }
 
     /// Tuyau le long d'un mur, sur toute la case ; aux bouts où le mur s'arrête, il fait un coude et rentre dans le mur.
-    static void WallPipe(Transform p, Vector3 face, Vector3 inward, Vector3 along, float off, float height, float radius, bool endLo, bool endHi, Material m)
+    static void WallPipe(Transform p, Vector3 face, Vector3 inward, Vector3 along, float off, float height, float radius, bool endLo, bool endHi, Material m, PipeStyle style)
     {
         float lo = endLo ? -MazeP * 0.5f + 0.35f : -MazeP * 0.5f, hi = endHi ? MazeP * 0.5f - 0.35f : MazeP * 0.5f;
         var basePt = face + inward * off + Vector3.up * height;
-        Pipe(p, basePt + along * ((lo + hi) * 0.5f), along, hi - lo, radius, m);
+        Pipe(p, basePt + along * ((lo + hi) * 0.5f), along, hi - lo, radius, m, style);
+        m = KitMaterial(style) ?? m; // coude et bride assortis au modèle
         foreach (var (isEnd, t) in new[] { (endLo, lo), (endHi, hi) })
         {
             if (!isEnd) continue;
@@ -151,8 +245,9 @@ public static partial class EchoesMapGenerator
     }
 
     /// Tuyau horizontal centré sur "center", orienté selon "axis".
-    static void Pipe(Transform p, Vector3 center, Vector3 axis, float length, float radius, Material m)
+    static void Pipe(Transform p, Vector3 center, Vector3 axis, float length, float radius, Material m, PipeStyle style = PipeStyle.None)
     {
+        if (style != PipeStyle.None && KitPipe(p, center, axis, length, radius, style)) return; // vrai modèle Poly Haven
         var go = Cylinder(p, "Tuyau", center, radius, length, Quaternion.FromToRotation(Vector3.up, axis), m, false);
         go.GetComponent<Renderer>().shadowCastingMode = radius < 0.05f ? UnityEngine.Rendering.ShadowCastingMode.Off : UnityEngine.Rendering.ShadowCastingMode.On;
     }
@@ -228,7 +323,8 @@ public static partial class EchoesMapGenerator
         var end = anchor + dirDown * len;
         if (end.y < L.y + 0.8f) end = new Vector3(end.x, L.y + 0.8f, end.z);
         var mid = (anchor + end) * 0.5f;
-        Cylinder(p, "Tuyau_Arrache", mid, 0.1f, Vector3.Distance(anchor, end), Quaternion.FromToRotation(Vector3.up, (end - anchor).normalized), m, false);
+        if (!KitPipe(p, mid, (end - anchor).normalized, Vector3.Distance(anchor, end), 0.1f, PipeStyle.Industrial))
+            Cylinder(p, "Tuyau_Arrache", mid, 0.1f, Vector3.Distance(anchor, end), Quaternion.FromToRotation(Vector3.up, (end - anchor).normalized), m, false);
         Drips(p, end + Vector3.down * 0.05f, end.y - L.y, Rand(4f, 9f));
         Puddle(p, new Vector3(end.x, L.y, end.z), Rand(0.7f, 1.3f));
     }
