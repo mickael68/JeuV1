@@ -296,12 +296,12 @@ public static partial class EchoesMapGenerator
     /// Flaque : disque sombre et brillant (sans reflet du ciel).
     static void Puddle(Transform p, Vector3 floor, float r)
     {
-        var m = Mat("Flaque", new Color(0.02f, 0.025f, 0.03f), 0.96f);
-        m.SetFloat("_EnvironmentReflections", 0f);
-        m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
-        var go = Cylinder(p, "Flaque", floor + Vector3.up * 0.006f, r, 0.004f, Quaternion.Euler(0f, Rand(0f, 180f), 0f), m, false);
-        var s = go.transform.localScale; s.z *= Rand(0.45f, 0.85f); go.transform.localScale = s;
+        var rot = Quaternion.Euler(0f, Rand(0f, 180f), 0f);
+        var go = Cylinder(p, "Flaque", floor + Vector3.up * 0.006f, r, 0.004f, rot, WaterPuddle, false);
+        float squash = Rand(0.45f, 0.85f);
+        var s = go.transform.localScale; s.z *= squash; go.transform.localScale = s;
         go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        WaterVolumeBox(p, "Flaque_Pas_Mouilles", floor + Vector3.up * 0.4f, new Vector3(r * 1.6f, 0.8f, r * 1.6f * squash), rot, 1f); // pas mouillés, sans ralentir
     }
 
     /// Fuite : tache d'humidité au plafond, gouttes qui tombent, flaque dessous.
@@ -312,6 +312,7 @@ public static partial class EchoesMapGenerator
         stain.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         Drips(p, top + Vector3.down * 0.03f, L.h - 0.05f, Rand(1.5f, 5f));
         Puddle(p, floor, Rand(0.5f, 1.1f));
+        WaterSound(p, floor + Vector3.up * 0.2f, SndDrip, 0.35f, 9f);
     }
 
     /// Tuyau arraché qui pend du plafond et goutte par son extrémité.
@@ -327,6 +328,7 @@ public static partial class EchoesMapGenerator
             Cylinder(p, "Tuyau_Arrache", mid, 0.1f, Vector3.Distance(anchor, end), Quaternion.FromToRotation(Vector3.up, (end - anchor).normalized), m, false);
         Drips(p, end + Vector3.down * 0.05f, end.y - L.y, Rand(4f, 9f));
         Puddle(p, new Vector3(end.x, L.y, end.z), Rand(0.7f, 1.3f));
+        WaterSound(p, new Vector3(end.x, L.y + 0.2f, end.z), SndDrip, 0.45f, 11f);
     }
 
     /// Gouttes : particules étirées qui tombent sous la gravité, du point "from" jusqu'au sol (hauteur "fall").

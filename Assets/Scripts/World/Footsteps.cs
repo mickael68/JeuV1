@@ -78,6 +78,8 @@ public class Footsteps : MonoBehaviour
     /// Sol sous les pieds, d'après le nom du matériau.
     private AudioClip SurfaceClip()
     {
+        var wet = WaterVolume.PlayerSplash; // dans l'eau : éclaboussures
+        if (wet != null) return wet;
         if (Physics.Raycast(transform.position + Vector3.up * 0.3f, Vector3.down, out var hit, 1.2f, ~0, QueryTriggerInteraction.Ignore))
         {
             var r = hit.collider.GetComponent<Renderer>();

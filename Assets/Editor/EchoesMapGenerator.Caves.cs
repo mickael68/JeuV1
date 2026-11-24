@@ -577,9 +577,12 @@ public static partial class EchoesMapGenerator
     {
         float waterY = n.c.y - n.radii.y / 1.6f - 0.25f;
         var water = Cylinder(D.props, "Lac_Souterrain", new Vector3(n.c.x, waterY, n.c.z), Mathf.Min(n.radii.x, n.radii.z) * 0.78f, 0.04f,
-            Quaternion.identity, CaveWater(), false);
+            Quaternion.identity, WaterLake, false);
         water.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
         water.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        float lakeR = Mathf.Min(n.radii.x, n.radii.z) * 0.78f;
+        WaterVolumeDisc(D.props, "Lac_Patauger", new Vector3(n.c.x, waterY, n.c.z), lakeR, 0.55f);
+        WaterSound(D.props, new Vector3(n.c.x, waterY + 0.5f, n.c.z), SndRiver, 0.18f, lakeR + 10f); // clapotis
         for (int k = 0; k < 4; k++) MushroomCluster(D, n.c + new Vector3(Rand(-8f, 8f), 0f, Rand(-8f, 8f)));
         var l = PointLight(D, n.c + Vector3.up * 2f, 18f, D.props);
         l.color = new Color(0.25f, 0.55f, 0.7f); l.intensity = 0.7f;
@@ -589,7 +592,7 @@ public static partial class EchoesMapGenerator
 
     static void DecorateRiver(LevelDef D, CaveEdge e)
     {
-        var m = CaveWater();
+        var m = WaterRiver;
         var parent = Child(D.props, "Riviere");
         parent.gameObject.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
         for (int i = 0; i < e.pts.Count - 1; i++)
@@ -599,8 +602,11 @@ public static partial class EchoesMapGenerator
             if (!CaveFloor(mid, out var h)) continue;
             var dir = b - a; dir.y = 0f;
             if (dir.sqrMagnitude < 0.01f) continue;
+            var rot = Quaternion.LookRotation(dir.normalized, Vector3.up); // +Z = sens du courant
             Cube(parent, "Eau", h.point + Vector3.up * 0.1f, new Vector3(e.r * 0.8f, 0.04f, dir.magnitude + 0.6f),
-                Quaternion.LookRotation(dir.normalized, Vector3.up), m, false, -1).GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                rot, m, false, -1).GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            WaterVolumeBox(parent, "Riviere_Patauger", h.point + Vector3.up * 0.8f, new Vector3(e.r * 0.8f, 1.6f, dir.magnitude + 0.6f), rot, 0.7f);
+            if (i % 4 == 0) WaterSound(parent, h.point + Vector3.up * 0.3f, SndRiver, 0.45f, 14f);
         }
     }
 

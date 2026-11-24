@@ -294,6 +294,7 @@ public class PlayerController : MonoBehaviour
         bool isSprinting = KeyBindings.Held(GameAction.Sprint) && _controller.isGrounded && !_isCrouching;
         float targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
         if (_isCrouching) targetSpeed *= crouchSpeedMultiplier;
+        targetSpeed *= WaterVolume.PlayerSpeedMultiplier; // on avance moins vite dans l'eau
 
         // ── Direction ──
         float inputX = KeyBindings.Axis(GameAction.Left, GameAction.Right, KeyCode.LeftArrow, KeyCode.RightArrow);

@@ -244,6 +244,7 @@ public static partial class EchoesMapGenerator
             BuildActors(root);
             EnsureSunPlayerAndSystems();
             SetupSky();
+            EnableWaterRendering(); // profondeur + image de la scène pour l'eau
             AssignPlayerAndAmbienceSounds();
             EnsurePlayerInventory();
 
@@ -1169,8 +1170,10 @@ public static partial class EchoesMapGenerator
                                 ScatterBoxes(L, new Rect(x - 3f, z + 0.5f, 6f, 0.8f), _rng.Next(1, 4));
                         }
                 var water = Cube(L.props, "Eau_Noire", new Vector3(0, y + 0.06f, 0), new Vector3(HalfX * 2f, 0.12f, GridNJ * Cell),
-                    Quaternion.identity, Mat("Eau", new Color(0.02f, 0.03f, 0.05f), 0.9f), false, -1);
+                    Quaternion.identity, WaterFlood, false, -1);
                 water.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+                water.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                WaterVolumeBox(L.props, "Inondation_Patauger", new Vector3(0, y + 0.6f, 0), new Vector3(HalfX * 2f, 1.2f, GridNJ * Cell), Quaternion.identity, 0.85f);
                 Prop(L, "Bureau_Archiviste", new Vector3(0f, y + 0.4f, 8f), new Vector3(2f, 0.8f, 1f), mp);
                 Marker(L, "Dossiers_Secrets", new Vector3(0f, y, 7f), Color.yellow);
                 Marker(L, "Silhouette_Immobile", new Vector3(12f, y, -8f), Color.magenta);
