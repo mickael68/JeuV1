@@ -13,8 +13,11 @@ public class TimeManager : MonoBehaviour
     public event Action OnDayStarted;
 
     [Header("Time Settings")]
-    [SerializeField] private float dayDurationSeconds = 300f; // 5 minutes par jour
+    [Tooltip("Durée réelle d'une heure de jeu (secondes). 60 = 1 h de jeu par minute, une journée en 24 min.")]
+    [SerializeField] private float realSecondsPerGameHour = 60f;
     [SerializeField] private int startHour = 8;
+
+    private float dayDurationSeconds => realSecondsPerGameHour * 24f;
 
     private float _time = 0f;
     private int _currentHour;
