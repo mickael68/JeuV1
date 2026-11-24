@@ -44,15 +44,17 @@ public static partial class EchoesMapGenerator
         ["Sol_0"] = new Surface("concrete_floor_worn_001", 3f, G(0.8f)),
         ["Plafond_0"] = new Surface("brushed_concrete", 3f, G(0.6f)),
 
-        // -1 : sous-sol ordinaire (peinture écaillée, carrelage usé)
-        ["Mur_-1"] = new Surface("peeling_painted_wall", 2.5f, G(0.9f)),
-        ["Sol_-1"] = new Surface("worn_tile_floor", 2f, G(0.85f)),
+        // -1 : sous-sol « utilités et béton » (parpaings peints, dalle de béton, casiers métalliques)
+        ["Mur_-1"] = new Surface("concrete_wall_006", 3f, G(1f)),
+        ["Sol_-1"] = new Surface("smooth_concrete_floor", 3f, G(0.75f)),
+        ["Metal_-1"] = new Surface("rusty_painted_metal", 1.5f, G(0.75f), 0.3f),
+        ["Casier"] = new Surface("rusty_painted_metal", 1.2f, T(0.62f, 0.7f, 0.74f), 0.35f),
         ["Plafond_-1"] = new Surface("brushed_concrete", 3f, G(0.7f)),
 
-        // -2 : locaux techniques
-        ["Mur_-2"] = new Surface("factory_wall", 3f, G(0.8f)),
-        ["Sol_-2"] = new Surface("garage_floor", 3f, G(0.75f)),
-        ["Plafond_-2"] = new Surface("brushed_concrete", 3f, G(0.55f)),
+        // -2 : infrastructures défaillantes (béton sale et taché, dalle abîmée)
+        ["Mur_-2"] = new Surface("dirty_concrete", 3f, T(0.78f, 0.7f, 0.62f)),
+        ["Sol_-2"] = new Surface("damaged_concrete_floor", 3f, G(0.6f)),
+        ["Plafond_-2"] = new Surface("dirty_concrete", 3f, G(0.45f)),
         ["Metal_-2"] = new Surface("rusty_metal_02", 1.5f, G(0.9f), 0.6f),
 
         // -3 : anciens tunnels de brique

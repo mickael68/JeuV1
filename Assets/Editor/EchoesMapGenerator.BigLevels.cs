@@ -208,11 +208,6 @@ public static partial class EchoesMapGenerator
             {
                 if (!open[i, j] || special[i, j] != 0) continue;
                 var c = Node(i, j);
-                if (technical)
-                {
-                    if (east[i, j]) Cylinder(L.props, "Tuyau", new Vector3(c.x + MazeP * 0.5f, y1 - 0.35f, c.z + 1.4f), 0.13f, MazeP, Quaternion.Euler(0, 0, 90), metal, false);
-                    if (north[i, j]) Cylinder(L.props, "Tuyau", new Vector3(c.x - 1.4f, y1 - 0.55f, c.z + MazeP * 0.5f), 0.1f, MazeP, Quaternion.Euler(90, 0, 0), metal, false);
-                }
                 if (_ductEntryNode == new Vector2Int(i, j) && technical) continue;
                 if (i == start.x && j == start.y) continue;
                 if (_rng.NextDouble() < 0.22)
@@ -239,6 +234,7 @@ public static partial class EchoesMapGenerator
                 Neon(L, new Vector3(c.x, y1, c.z), yaw, roll < 0.85 ? FailingLight.Mode.Failing : roll < 0.95 ? FailingLight.Mode.Dying : FailingLight.Mode.Dead, _rng.NextDouble() < 0.3);
         }
         PointLight(L, new Vector3(Node(start.x, start.y).x, y1 - 0.4f, Node(start.x, start.y).z), 9f); // toujours éclairé à l'arrivée
+        DressUnderground(L, technical, open, special, east, north, start, _ductEntryNode); // béton et casiers (-1), fuites et rouille (-2)
 
         // 10) Trappe du conduit (-2)
         if (technical && _ductEntryNode.x >= 0)

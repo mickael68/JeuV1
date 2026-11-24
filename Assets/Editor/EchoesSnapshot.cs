@@ -84,6 +84,8 @@ public static class EchoesSnapshot
         foreach (var (markerName, file, height, pitch) in new[] {
             ("◆ Vue_Studio_Abandonne", "niveau0_studio_abandonne", 1.1f, 18f),
             ("◆ Conduit_Arrivee (ramper : accroupi)", "conduit_aeration", 0.35f, 5f),
+            ("◆ Vue_Sous_Sol_-1", "sous_sol_1", 1.5f, 4f),
+            ("◆ Vue_Sous_Sol_-2", "sous_sol_2", 1.5f, 4f),
             ("◆ Vue_Grotte_Faille", "grotte_faille", 1f, 8f),
             ("◆ Vue_Grotte_Foret", "grotte_foret", 1f, -4f),
             ("◆ Vue_Grotte_Lac", "grotte_lac", 1f, 4f) })
