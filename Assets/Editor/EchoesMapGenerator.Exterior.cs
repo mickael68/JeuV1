@@ -137,7 +137,8 @@ public static partial class EchoesMapGenerator
         FenceLine(X, new Vector3(YardRect.xMin, gy, YardRect.yMax), new Vector3(YardRect.xMax, gy, YardRect.yMax), mFence, null);
         FenceLine(X, new Vector3(YardRect.xMin, gy, YardRect.yMin), new Vector3(YardRect.xMin, gy, YardRect.yMax), mFence, null);
         FenceLine(X, new Vector3(YardRect.xMax, gy, YardRect.yMin), new Vector3(YardRect.xMax, gy, YardRect.yMax), mFence, new Vector2(pz0 - 0.6f, pz1 + 0.6f));
-        Model(X, KGraveyard + "iron-fence-border-gate", new Vector3(YardRect.xMax, gy, ExitZ), 90f, new Vector3(0.4f, 2.4f, 3.4f), mFence);
+        var gate = Model(X, KGraveyard + "iron-fence-border-gate", new Vector3(YardRect.xMax, gy, ExitZ), 90f, new Vector3(0.4f, 2.4f, 3.4f), mFence);
+        FitInGap(gate, YardRect.xMax, pz0 - 0.6f, pz1 + 0.6f);
         Marker(X, "Portail_Ferme (sortie de la residence)", new Vector3(YardRect.xMax - 1.5f, gy, ExitZ), Color.yellow);
 
         // Murs invisibles : on ne sort pas de la cour
@@ -207,6 +208,18 @@ public static partial class EchoesMapGenerator
         BuildBackdrop(X);
     }
 
+    /// Étire et recentre le portail pour qu'il bouche exactement l'ouverture [z0, z1] de la clôture (ligne x).
+    static void FitInGap(GameObject gate, float x, float z0, float z1)
+    {
+        if (gate == null || !TryBounds(gate, out var b) || b.size.z < 0.01f) return;
+        var t = gate.transform;
+        var local = t.InverseTransformDirection(Vector3.forward); // axe local qui donne la largeur en z
+        int axis = Mathf.Abs(local.x) > Mathf.Abs(local.y) ? (Mathf.Abs(local.x) > Mathf.Abs(local.z) ? 0 : 2) : (Mathf.Abs(local.y) > Mathf.Abs(local.z) ? 1 : 2);
+        var s = t.localScale; s[axis] *= (z1 - z0) / b.size.z; t.localScale = s;
+        if (!TryBounds(gate, out b)) return;
+        t.position += new Vector3(x - b.center.x, 0f, (z0 + z1) * 0.5f - b.center.z);
+    }
+
     /// Lampadaire : poteau, tête, lumière chaude.
     static void StreetLamp(LevelDef X, Vector3 foot)
     {
@@ -220,6 +233,13 @@ public static partial class EchoesMapGenerator
     /// Clôture en fer forgé de a à b (tronçons de 3 m), avec une ouverture éventuelle (plage de z).
     static void FenceLine(LevelDef X, Vector3 a, Vector3 b, Material fallback, Vector2? gap)
     {
+        // Ouverture exacte (le portail la remplit) : deux tronçons de part et d'autre
+        if (gap.HasValue && Mathf.Abs(b.x - a.x) < Mathf.Abs(b.z - a.z))
+        {
+            FenceLine(X, a, new Vector3(a.x, a.y, gap.Value.x), fallback, null);
+            FenceLine(X, new Vector3(a.x, a.y, gap.Value.y), b, fallback, null);
+            return;
+        }
         const float seg = 3f;
         bool alongX = Mathf.Abs(b.x - a.x) > Mathf.Abs(b.z - a.z);
         float len = alongX ? b.x - a.x : b.z - a.z;

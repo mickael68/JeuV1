@@ -54,7 +54,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.22, y: 0.1, z: 0.22}
   m_Center: {x: 0, y: 0.004, z: 0}
---- !u!1 &6071331293579072351
+--- !u!1 &3190002871333630774
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -62,9 +62,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 8077491323568298907}
-  - component: {fileID: 2347443711218974840}
-  - component: {fileID: 131723287445430339}
+  - component: {fileID: 732392665041940598}
+  - component: {fileID: 2195699691175541062}
+  - component: {fileID: 1749087450545450042}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -72,13 +72,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &8077491323568298907
+--- !u!4 &732392665041940598
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6071331293579072351}
+  m_GameObject: {fileID: 3190002871333630774}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: -0.034899496, w: 0.99939084}
   m_LocalPosition: {x: 0.052, y: 0.004, z: 0}
@@ -87,21 +87,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 9001120117641352014}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &2347443711218974840
+--- !u!33 &2195699691175541062
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6071331293579072351}
+  m_GameObject: {fileID: 3190002871333630774}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &131723287445430339
+--- !u!23 &1749087450545450042
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6071331293579072351}
+  m_GameObject: {fileID: 3190002871333630774}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -174,7 +174,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 280139806980859453}
-  - {fileID: 8077491323568298907}
+  - {fileID: 732392665041940598}
   m_Father: {fileID: 5690990875214024868}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6791939387384493903

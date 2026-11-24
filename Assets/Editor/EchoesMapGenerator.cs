@@ -1185,8 +1185,12 @@ public static partial class EchoesMapGenerator
                         bool edge = i == 0 || j == 0 || i == GridNI - 1 || j == GridNJ - 1 || !w[i - 1, j] || !w[i + 1, j] || !w[i, j - 1] || !w[i, j + 1];
                         if (!edge || _rng.NextDouble() > 0.4) continue;
                         float sz = Rand(1.2f, 2.6f);
-                        Model(L, KGraveyard + (_rng.NextDouble() < 0.4 ? "rocks-tall" : "rocks"),
-                            CellCenter(L, i, j) + new Vector3(Rand(-0.5f, 0.5f), 0, Rand(-0.5f, 0.5f)), Rand(0, 360), new Vector3(sz, sz * 1.5f, sz), mp);
+                        string rockPath = KGraveyard + (_rng.NextDouble() < 0.4 ? "rocks-tall" : "rocks");
+                        var rockPos = CellCenter(L, i, j) + new Vector3(Rand(-0.5f, 0.5f), 0, Rand(-0.5f, 0.5f));
+                        float rockRot = Rand(0, 360);
+                        var keepClear = Rect.MinMaxRect(CaveSlabHole.xMin - 3f, CaveSlabHole.yMin - 3f, CaveSlabHole.xMax + 3f, CaveSlabHole.yMax + 3f);
+                        if (keepClear.Contains(new Vector2(rockPos.x, rockPos.z))) continue; // la faille vers les grottes reste dégagée
+                        Model(L, rockPath, rockPos, rockRot, new Vector3(sz, sz * 1.5f, sz), mp);
                     }
                 var center = CellCenter(L, 10, 5);
                 Cube(L.props, "Monolithe", center + new Vector3(0, 3f, 0), new Vector3(2f, 6f, 2f), Quaternion.Euler(0, 20, 4), dark, true, _layerFurniture);
