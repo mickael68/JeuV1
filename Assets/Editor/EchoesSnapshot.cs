@@ -83,7 +83,10 @@ public static class EchoesSnapshot
         // Vue dynamique : premier studio abandonné du niveau 0 (repère posé par le générateur)
         foreach (var (markerName, file, height, pitch) in new[] {
             ("◆ Vue_Studio_Abandonne", "niveau0_studio_abandonne", 1.1f, 18f),
-            ("◆ Conduit_Arrivee (ramper : accroupi)", "conduit_aeration", 0.35f, 5f) })
+            ("◆ Conduit_Arrivee (ramper : accroupi)", "conduit_aeration", 0.35f, 5f),
+            ("◆ Vue_Grotte_Faille", "grotte_faille", 1f, 8f),
+            ("◆ Vue_Grotte_Foret", "grotte_foret", 1f, -4f),
+            ("◆ Vue_Grotte_Lac", "grotte_lac", 1f, 4f) })
         {
         var studioView = GameObject.Find(markerName);
         if (studioView != null)

@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58287c0c60e9d954e8930160d209f6af, type: 3}
+  m_Name: note_grotte_1
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  id: note_grotte_1
+  displayName: "Page d\xE9chir\xE9e"
+  description: "Une page arrach\xE9e \xE0 un carnet, humide et tach\xE9e de boue."
+  kind: 2
+  model: {fileID: 1524080324605258679, guid: c49699c895fa4e6439f8f236ad7fa387, type: 3}
+  handSize: 0.2
+  stackable: 0
+  maxStack: 1
+  consumedOnUse: 0
+  keyId: 
+  noteText: "Il y a des arbres, ici, sous la terre. Des vrais arbres. Une lumi\xE8re
+    tombe d'une fissure, mais il n'y a pas de ciel au-dessus de nous.\n\nOn ne devrait
+    pas \xEAtre l\xE0."
+  batteryCharge: 1

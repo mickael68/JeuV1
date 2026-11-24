@@ -47,3 +47,6 @@
 *.ttf filter=lfs diff=lfs merge=lfs -text
 *.otf filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
+
+# Maillage généré des grottes du -7 (gros fichier)
+Assets/Materials/Greybox/CaveMeshes.asset filter=lfs diff=lfs merge=lfs -text

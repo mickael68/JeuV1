@@ -44,7 +44,7 @@ public static partial class EchoesMapGenerator
     // Cage d'escalier
     const float ShaftW = 5f, Landing = 1.6f, MaxRise = 0.2f;
 
-    enum Kind { Dorm, Abandoned, Maze, Basement, Technical, Tunnels, Archives, Inverted, Abyss }
+    enum Kind { Dorm, Abandoned, Maze, Basement, Technical, Tunnels, Archives, Inverted, Abyss, Caves }
 
     // Labyrinthe de l'étage 0 : nœuds de 4 m, x ∈ [-40, 40], z ∈ [-30, 26]
     const float MazeP = 4f, MazeX0 = -40f, MazeZ0 = -30f;
@@ -142,6 +142,10 @@ public static partial class EchoesMapGenerator
             new LevelDef { number = -6, name = "-6 Le fond", kind = Kind.Abyss, y = -33f, h = 8.2f,
                 wall = C(0.18f, 0.14f, 0.14f), floor = C(0.10f, 0.08f, 0.08f),
                 ambient = C(0.01f, 0.004f, 0.004f), fog = 0.1f, lightColor = C(0.8f, 0.1f, 0.1f), lightIntensity = 1.8f, lightCount = 4, flicker = 0.3f, danger = 5 },
+            // -7 : réseau de grottes sous le fond (accès par une faille dans le sol du -6)
+            new LevelDef { number = -7, name = "-7 Le reseau de grottes", kind = Kind.Caves, y = -82f, h = 49f,
+                wall = C(0.3f, 0.26f, 0.22f), floor = C(0.25f, 0.22f, 0.18f),
+                ambient = C(0.008f, 0.01f, 0.014f), fog = 0.035f, lightColor = C(0.3f, 0.8f, 1f), lightIntensity = 1f, danger = 5 },
         };
     }
 
@@ -194,6 +198,7 @@ public static partial class EchoesMapGenerator
         ResetBoxMeshes();
         _skipRealistic = false; _realisticPrepared = false; _generatorMarked = false;
         EnsureItems(); // fiches et modèles des objets ramassables
+        EnsureCaveNotes();
         _rng = new System.Random(Seed);
         _layerGround = Layer("Ground"); _layerWalls = Layer("Walls");
         _layerFurniture = Layer("Furniture"); _layerNpc = Layer("NPC");
@@ -280,6 +285,10 @@ public static partial class EchoesMapGenerator
                 BuildNodeLevel(L);
                 zMin = L.zMin; zMax = L.zMax;
                 break;
+            case Kind.Caves:
+                BuildCaveLevel(L);
+                zMin = L.zMin; zMax = L.zMax;
+                break;
             case Kind.Maze:
                 BuildMazeLevel(L);
                 zMin = L.zMin; zMax = L.zMax;
@@ -313,7 +322,7 @@ public static partial class EchoesMapGenerator
         var mc = Mat("Plafond_" + L.number, L.wall * 0.8f);
         // Dortoirs : trémie de l'ascenseur (sol des étages 1-3, plafond des étages 1-2 ; le 3 garde son toit)
         bool dorm = L.kind == Kind.Dorm;
-        Rect? floorHole = dorm && L.number >= 1 ? ElevHole : (Rect?)null;
+        Rect? floorHole = dorm && L.number >= 1 ? ElevHole : L.number == -6 ? CaveSlabHole : (Rect?)null; // -6 : faille vers les grottes
         Rect? ceilHole = dorm && L.number <= 2 ? ElevHole : (Rect?)null;
         SlabWithHole(L.root, "Sol", -HalfX - 0.1f, HalfX + 0.1f, zMin - 0.1f, zMax + 0.1f, L.y - Slab, L.y, floorHole, mf, _layerGround);
         SlabWithHole(L.root, "Plafond", -HalfX - 0.1f, HalfX + 0.1f, zMin - 0.1f, zMax + 0.1f, L.y + L.h, L.y + L.h + Slab, ceilHole, mc, _layerWalls);
