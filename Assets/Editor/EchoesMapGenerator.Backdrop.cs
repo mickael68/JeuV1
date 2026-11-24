@@ -50,6 +50,7 @@ public static partial class EchoesMapGenerator
             Set("daySkybox", day);
             Set("eveningSkybox", evening);
             Set("nightSkybox", night);
+            Set("skyBlendShader", Shader.Find("TheEchoesBelow/Skybox Blend")); // référencé : inclus dans les builds
             Set("sunLight", GameObject.Find("Soleil")?.GetComponent<Light>());
             so.ApplyModifiedPropertiesWithoutUndo();
         }
