@@ -247,13 +247,19 @@ public class PlayerController : MonoBehaviour
         _camera.transform.localRotation = Quaternion.Euler(_rotationX, 0f, 0f);
     }
 
+    /// La lampe torche du joueur (utilisée aussi par la pile).
+    public Light Flashlight => _flashlight;
+
     private void HandleFlashlight()
     {
-        if (_flashlight != null && KeyBindings.Down(GameAction.Flashlight))
+        if (_flashlight == null || !KeyBindings.Down(GameAction.Flashlight)) return;
+        if (!_flashlight.enabled && FlashlightBattery.Instance != null && FlashlightBattery.Instance.Charge <= 0f)
         {
-            _flashlight.enabled = !_flashlight.enabled;
-            Debug.Log($"[Player] Lampe torche : {(_flashlight.enabled ? "ON" : "OFF")}");
+            HudMessage.Show("La lampe ne s'allume pas : la pile est vide.", 2.5f);
+            return;
         }
+        _flashlight.enabled = !_flashlight.enabled;
+        Debug.Log($"[Player] Lampe torche : {(_flashlight.enabled ? "ON" : "OFF")}");
     }
 
     private void HandleMovement()

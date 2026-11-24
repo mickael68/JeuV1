@@ -8,9 +8,10 @@ public class FlashlightBattery : MonoBehaviour
 {
     public static FlashlightBattery Instance { get; private set; }
 
-    [Tooltip("Durée d'une charge complète, lampe allumée (secondes).")]
-    public float fullDurationSeconds = 420f;
-    [Range(0f, 1f)] public float startCharge = 0.75f;
+    // Noms changés : les anciennes valeurs (7 min, 75 %) enregistrées dans la scène ne s'appliquent plus
+    [Tooltip("Durée d'une charge complète, lampe allumée (minutes).")]
+    public float fullChargeMinutes = 20f;
+    [Range(0f, 1f)] public float initialCharge = 1f;
 
     public float Charge { get; private set; }
 
@@ -21,29 +22,30 @@ public class FlashlightBattery : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        Charge = startCharge;
+        Charge = initialCharge;
     }
 
     private void LateUpdate()
     {
         if (_light == null)
         {
-            var cam = Camera.main;
-            if (cam == null) return;
-            foreach (var l in cam.GetComponentsInChildren<Light>(true))
-                if (l.type == LightType.Spot) { _light = l; _baseIntensity = l.intensity; break; }
+            // La même lampe que celle que le joueur allume et éteint
+            var player = PlayerController.Instance;
+            _light = player != null ? player.Flashlight : null;
             if (_light == null) return;
+            _baseIntensity = _light.intensity;
         }
 
         if (!_light.enabled) return;
         if (Charge <= 0f)
         {
             _light.enabled = false;
+            _light.intensity = _baseIntensity;
             HudMessage.Show("La lampe torche est à plat. Il faut une pile.", 3f);
             return;
         }
 
-        Charge = Mathf.Max(0f, Charge - Time.deltaTime / fullDurationSeconds);
+        Charge = Mathf.Max(0f, Charge - Time.deltaTime / (fullChargeMinutes * 60f));
         float k = Charge > 0.2f ? 1f : Mathf.Lerp(0.25f, 1f, Charge / 0.2f);
         if (Charge < 0.12f && Random.value < 0.04f) k *= 0.2f; // ça vacille
         _light.intensity = _baseIntensity * k;
