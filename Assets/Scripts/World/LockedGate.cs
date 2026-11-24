@@ -13,11 +13,11 @@ public class LockedGate : MonoBehaviour, IInteractable
 
     public void Unlock() => locked = false;
 
-    public string GetInteractText() => locked ? "Grille verrouillée" : "Ouvrir la grille";
+    public string GetInteractText() => locked && !DevMode.Enabled ? "Grille verrouillée" : "Ouvrir la grille";
 
     public void Interact()
     {
-        if (locked)
+        if (locked && !DevMode.Enabled)
         {
             Debug.Log("[Grille] " + lockedMessage);
             return;

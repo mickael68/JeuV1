@@ -76,6 +76,7 @@ public static partial class EchoesMapGenerator
         public Color wall, floor;
         public bool overrideAmbience = true;
         public Color ambient; public float fog;
+        public bool pitchBlack;   // noir absolu : aucune lumière, seule la lampe du joueur éclaire
         public Color lightColor; public float lightIntensity; public int lightCount; public float flicker;
         public int danger;
         public bool doorEast, doorWest;
@@ -132,7 +133,7 @@ public static partial class EchoesMapGenerator
                 ambient = C(0.04f, 0.035f, 0.03f), fog = 0.04f, lightColor = C(1f, 0.6f, 0.3f), lightIntensity = 1.4f, lightCount = 7, flicker = 0.4f, danger = 2 },
             new LevelDef { number = -3, name = "-3 Anciens tunnels", kind = Kind.Tunnels, y = -14.5f, h = 3.7f,
                 wall = C(0.36f, 0.33f, 0.30f), floor = C(0.22f, 0.20f, 0.18f),
-                ambient = C(0.02f, 0.02f, 0.02f), fog = 0.06f, lightColor = C(0.9f, 0.85f, 0.6f), lightIntensity = 1.0f, lightCount = 5, flicker = 0.6f, danger = 3 },
+                ambient = Color.black, fog = 0.06f, pitchBlack = true, lightColor = C(0.9f, 0.85f, 0.6f), lightIntensity = 1.0f, lightCount = 0, flicker = 0.6f, danger = 3 },
             new LevelDef { number = -4, name = "-4 Archives inondees", kind = Kind.Archives, y = -20f, h = 4.7f,
                 wall = C(0.30f, 0.32f, 0.36f), floor = C(0.18f, 0.19f, 0.21f),
                 ambient = C(0.015f, 0.02f, 0.03f), fog = 0.07f, lightColor = C(0.5f, 0.7f, 1f), lightIntensity = 0.9f, lightCount = 5, flicker = 0.5f, danger = 3 },
@@ -314,6 +315,7 @@ public static partial class EchoesMapGenerator
         zone.ambientColor = L.ambient;
         zone.fogColor = L.ambient * 0.6f;
         zone.fogDensity = L.fog;
+        zone.reflectionIntensity = L.number < 0 ? 0f : 1f; // sous terre : aucun reflet du ciel
     }
 
     static void Slabs(LevelDef L, float zMin, float zMax)
@@ -1211,6 +1213,7 @@ public static partial class EchoesMapGenerator
 
     static void GridLights(LevelDef L, bool[,] w)
     {
+        if (L.pitchBlack) return; // noir absolu
         var placed = new List<Vector3>();
         // Toujours une lumière près de chaque porte pour se repérer
         if (L.doorEast) placed.Add(CellCenter(L, GridNI - 1, DoorJ));
@@ -1284,6 +1287,7 @@ public static partial class EchoesMapGenerator
         {
             if (L != bottom)
                 Box(go, "Palier_" + L.number, new Vector3(x0, L.y - Slab, z0), new Vector3(x0 + ShaftW, L.y, zs), ms, _layerGround);
+            if (L.pitchBlack) continue; // palier dans le noir absolu
             var lamp = PointLight(L, new Vector3(x0 + ShaftW * 0.5f, L.y + 2.6f, z0 + 0.8f), 7f, go);
             lamp.intensity *= 0.6f;
         }

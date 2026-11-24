@@ -50,7 +50,12 @@ public class Door : MonoBehaviour, IInteractable
     {
         if (locked)
         {
-            if (!string.IsNullOrEmpty(requiredKeyId) && Inventory.Instance != null && Inventory.Instance.HasKey(requiredKeyId))
+            if (DevMode.Enabled)
+            {
+                locked = false;
+                HudMessage.Show("[Dev] Déverrouillé sans clé.", 2f);
+            }
+            else if (!string.IsNullOrEmpty(requiredKeyId) && Inventory.Instance != null && Inventory.Instance.HasKey(requiredKeyId))
             {
                 locked = false;
                 HudMessage.Show("Déverrouillé.", 2f);

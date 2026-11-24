@@ -586,14 +586,21 @@ public static partial class EchoesMapGenerator
             nFloor++;
         }
 
-        // Ambiance : quelques voyants rouges, un reflet de lumière au bout de fausses pistes
-        for (int k = 0; k < 7; k++)
-        {
-            var v = new Vector2Int(_rng.Next(DuctNI), _rng.Next(DuctNJ));
-            var lt = PointLight(holder, C(v.x, v.y, ty - 0.15f), 4f, go);
-            lt.intensity = 0.5f;
-            if (_rng.NextDouble() < 0.5) lt.gameObject.AddComponent<FailingLight>().mode = FailingLight.Mode.Failing;
-        }
+        // Noir absolu dans tout le conduit : aucune lumière, ambiance noire imposée par une zone
+        var zoneGo = new GameObject("Zone_Conduit_Noir");
+        zoneGo.transform.SetParent(go, false);
+        var zb = zoneGo.AddComponent<BoxCollider>();
+        zb.isTrigger = true;
+        zb.center = new Vector3(DuctX0 + DuctNI * DuctCell * 0.5f, fy + DuctH * 0.5f, DuctZ0 + DuctNJ * DuctCell * 0.5f + 1f);
+        zb.size = new Vector3(DuctNI * DuctCell, DuctH + 0.4f, DuctNJ * DuctCell + 2f);
+        var zone = zoneGo.AddComponent<FloorZone>();
+        zone.floorNumber = -2;
+        zone.displayName = "Conduit d'aération";
+        zone.dangerLevel = 3;
+        zone.ambientColor = Color.black;
+        zone.fogColor = Color.black;
+        zone.fogDensity = 0.08f;
+        zone.reflectionIntensity = 0f;
 
         // 7) -3 : grille arrachée au pied de l'ouverture
         Cube(down.props, "Grille_Arrachee", new Vector3(xt + 0.6f, down.y + 0.03f, GridZMin + 0.8f), new Vector3(1f, 0.05f, 1.2f),
