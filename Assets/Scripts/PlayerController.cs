@@ -41,9 +41,11 @@ public class PlayerController : MonoBehaviour
     [Header("Flashlight")]
     [SerializeField] private bool hasFlashlight = true;
     [SerializeField] private Color flashlightColor = new Color(1f, 0.95f, 0.85f);
-    [SerializeField] private float flashlightIntensity = 2.5f;
-    [SerializeField] private float flashlightRange = 15f;
-    [SerializeField] private float flashlightAngle = 35f;
+    // Noms changés : les anciens réglages (2,5 / 15 m / 35°) enregistrés dans la scène ne s'appliquent plus
+    [SerializeField] private float beamIntensity = 7f;
+    [SerializeField] private float beamRange = 30f;
+    [SerializeField] private float beamAngle = 55f;       // largeur totale du faisceau
+    [SerializeField] private float beamInnerAngle = 28f;  // cœur du faisceau, plus intense
 
     // ── Accroupissement ──
     // ── Taille de l'étudiant ──
@@ -170,15 +172,16 @@ public class PlayerController : MonoBehaviour
             flashlightObj.transform.SetParent(_camera.transform);
             flashlightObj.transform.localPosition = new Vector3(0.3f, -0.2f, 0f);
             flashlightObj.transform.localRotation = Quaternion.identity;
-
             _flashlight = flashlightObj.AddComponent<Light>();
-            _flashlight.type = LightType.Spot;
-            _flashlight.color = flashlightColor;
-            _flashlight.intensity = flashlightIntensity;
-            _flashlight.range = flashlightRange;
-            _flashlight.spotAngle = flashlightAngle;
-            _flashlight.shadows = LightShadows.Soft;
         }
+        // Réglages toujours appliqués, même à une lampe déjà présente
+        _flashlight.type = LightType.Spot;
+        _flashlight.color = flashlightColor;
+        _flashlight.intensity = beamIntensity;
+        _flashlight.range = beamRange;
+        _flashlight.spotAngle = beamAngle;
+        _flashlight.innerSpotAngle = beamInnerAngle;
+        _flashlight.shadows = LightShadows.Soft;
     }
 
     private void SetupPauseMenu()
