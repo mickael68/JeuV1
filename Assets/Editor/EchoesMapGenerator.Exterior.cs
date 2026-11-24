@@ -96,6 +96,7 @@ public static partial class EchoesMapGenerator
         var holes = new List<Rect> { Rect.MinMaxRect(-HalfX - 0.1f, CorrS - RoomDepth - 0.1f, HalfX + 0.1f, CorrN + RoomDepth + 0.1f) };
         holes.AddRange(_shaftRects);
         holes.Add(WingFootprint); // aile nord
+        holes.Add(BridgeFootprint); // passerelle (au niveau du sol)
         GroundAround(ext, Rect.MinMaxRect(-GroundX, GroundZ0, GroundX, GroundZ1), holes, gy - Slab, gy, Mat("Exterieur_Herbe", Color.white));
 
         // 2) Façade en brique (peau extérieure des étages 1 à 3)
@@ -153,7 +154,7 @@ public static partial class EchoesMapGenerator
         // 5) Arbres : bois dense hors de la cour, quelques arbres dans la cour
         string[] trees = { KSurvival + "tree-autumn-tall", KSurvival + "tree-autumn", KSurvival + "tree-tall", KSurvival + "tree", KGraveyard + "pine", KGraveyard + "pine-crooked" };
         var keepOut = Rect.MinMaxRect(-HalfX - 8f, CorrS - RoomDepth - 4f, HalfX + 4f, CorrN + RoomDepth + 4f);
-        var wingOut = Rect.MinMaxRect(WX0 - 4f, WZ0, WX1 + 4f, WZ1 + 4f);
+        var wingOut = Rect.MinMaxRect(WX0 - 4f, 5f, WX1 + 4f, WZ1 + 4f); // aile + cour
         int placed = 0;
         for (int tries = 0; tries < 600 && placed < 45; tries++) // arbres réalistes : coûteux, on en met moins
         {

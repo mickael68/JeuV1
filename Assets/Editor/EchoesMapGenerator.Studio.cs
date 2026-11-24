@@ -158,13 +158,21 @@ public static partial class EchoesMapGenerator
         AddSeat(chair, 0.48f, faceRight, Vector3.zero, "S'asseoir");
 
         // Grande armoire contre le mur de droite, côté couloir
-        Piece(L, MegaClosets, KFurniture + "bookcaseClosedDoors", P(3.65f, 3.6f), faceLeft, new Vector3(0.62f, 2.1f, 1.6f), mp);
+        Piece(L, MegaClosets, KFurniture + "bookcaseClosedDoors", P(3.65f, 3.35f), faceLeft, new Vector3(0.62f, 2.1f, 1.5f), mp);
 
         // Kitchenette contre le mur de gauche, côté couloir : meuble, évier, frigo
         Piece(L, MegaCabinets, null, P(0.32f, 3.25f), faceRight, new Vector3(0.62f, 0.9f, 0.62f), mp);
         Piece(L, MegaSinks, null, P(0.32f, 3.9f), faceRight, new Vector3(0.62f, 0.9f, 0.62f), mp);
         Piece(L, MegaFridges, null, P(0.35f, 4.6f), faceRight, new Vector3(0.66f, 1.75f, 0.66f), mp);
         Piece(L, MegaMicrowaves, null, P(0.3f, 3.25f, 0.9f), faceRight, new Vector3(0.36f, 0.3f, 0.5f), mp, false);
+
+        // Salle de bains côté couloir, à droite de l'entrée (u 2,7 → 4,0 ; d 4,3 → couloir), porte vers l'entrée
+        {
+            float xa = sideL + sx * 2.7f, xb = sideL + sx * 4.0f; // dégage la porte du studio (u 1,45 → 2,55)
+            float za = back + s * 4.4f, zc = back + s * 6.0f;
+            var bath = Rect.MinMaxRect(Mathf.Min(xa, xb), Mathf.Min(za, zc), Mathf.Max(xa, xb), Mathf.Max(za, zc));
+            SmallBathroom(L, bath, new Vector3(sx, 0f, 0f), 0f, xa < xb, xa > xb, za < zc, za > zc);
+        }
 
         // Poubelle sous le bureau (pièce dégagée au centre)
         if (_rng.NextDouble() < 0.6)
