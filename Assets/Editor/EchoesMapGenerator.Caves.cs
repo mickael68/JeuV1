@@ -219,7 +219,7 @@ public static partial class EchoesMapGenerator
             if (e.blocked && CaveFloor(e.pts[e.pts.Count / 2], out var hb))
             {
                 var c = hb.point;
-                RockPile(D, new Rect(c.x - e.r, c.z - e.r, e.r * 2f, e.r * 2f), 14, mp);
+                CaveRubble(D, e, c);   // éboulement visible (avant : les rochers étaient posés tout en bas du volume, invisibles)
                 Cube(deco, "Eboulement_Collision", c + Vector3.up * 1.5f, new Vector3(e.r * 2.2f, 3f, e.r * 2.2f), Quaternion.identity, mp, true, _layerWalls)
                     .GetComponent<Renderer>().enabled = false;
             }
@@ -237,6 +237,36 @@ public static partial class EchoesMapGenerator
             if (CaveFloor(spots[_rng.Next(spots.Count)], out var hbat)) PlaceItem(D, "pile", hbat.point, Rand(0f, 360f));
 
         Debug.Log($"[EchoesMap] Grottes du -7 : {nodes.Count} salles, {edges.Count} galeries ({extra.Count} en boucle, 3 boyaux, 3 éboulements), {spurs} impasses, {pits.Count} gouffres.");
+    }
+
+    /// Éboulement qui bouche une galerie : gros blocs posés sur le vrai sol, jusqu'au plafond.
+    static void CaveRubble(LevelDef D, CaveEdge e, Vector3 floor)
+    {
+        string[] ids = { "namaqualand_boulder_02", "namaqualand_boulder_05", "boulder_01", "rock_07", "rock_09" };
+        int mid = e.pts.Count / 2;
+        var dir = (e.pts[Mathf.Min(mid + 1, e.pts.Count - 1)] - e.pts[Mathf.Max(mid - 1, 0)]); dir.y = 0f; dir.Normalize();
+        var side = Vector3.Cross(Vector3.up, dir);
+        // Rangées de gros blocs empilés en pyramide, qui se chevauchent et s'enfoncent dans les parois : aucun vide
+        float big = e.r * 0.95f;
+        int[] perRow = { 4, 3, 3, 2 };
+        for (int row = 0; row < perRow.Length; row++)
+            for (int k = 0; k < perRow[row]; k++)
+            {
+                float u = (k / (float)(perRow[row] - 1) - 0.5f) * 2f;   // -1 → 1 en travers
+                float s = big * Rand(0.85f, 1.15f) * (row == 0 ? 1.1f : 1f);
+                var p = floor + side * (u * e.r * (0.85f - row * 0.12f)) + dir * Rand(-0.6f, 0.6f);
+                float gy = CaveFloor(p + Vector3.up * 1.5f, out var h) ? h.point.y : p.y;
+                float y = gy + row * big * 0.62f - s * 0.18f;
+                CaveProp(D, ids[_rng.Next(ids.Length)], new Vector3(p.x, y, p.z), Rand(0f, 360f), new Vector3(s, s * 0.85f, s), row == 0);
+            }
+        // Pierres éparses au pied de l'éboulement, des deux côtés
+        for (int k = 0; k < 8; k++)
+        {
+            var p = floor + side * Rand(-e.r * 0.8f, e.r * 0.8f) + dir * (Rand(1.4f, 2.8f) * (k % 2 == 0 ? 1f : -1f)) + Vector3.up * 1.5f;
+            if (!CaveFloor(p, out var h)) continue;
+            float s = Rand(0.3f, 0.7f);
+            CaveProp(D, ids[_rng.Next(ids.Length)], h.point - Vector3.up * s * 0.2f, Rand(0f, 360f), new Vector3(s, s * 0.7f, s));
+        }
     }
 
     static float CaveDist(Vector3 a, Vector3 b) => Vector2.Distance(new Vector2(a.x, a.z), new Vector2(b.x, b.z)) + Mathf.Abs(a.y - b.y) * 1.5f;
@@ -319,7 +349,9 @@ public static partial class EchoesMapGenerator
         }
 
         // Bruit (roche irrégulière) près des surfaces, bords du volume fermés sauf la faille
+        // Les sols restent praticables : bruit fortement réduit là où la surface regarde vers le haut
         var f = air;
+        var flat = (float[])air.Clone();
         for (int z = 0; z < CaveNZ; z++)
             for (int y = 0; y < CaveNY; y++)
                 for (int x = 0; x < CaveNX; x++)
@@ -330,7 +362,16 @@ public static partial class EchoesMapGenerator
                     bool top = y == CaveNY - 1;
                     if (border || (top && !CaveOpenRect.Contains(new Vector2(p.x, p.z)))) { f[i] = -2f; continue; }
                     if (f[i] < -3f) continue;
-                    f[i] += Fbm(p) * amp[i];
+                    float k = amp[i];
+                    if (y > 0 && y < CaveNY - 1 && x > 0 && x < CaveNX - 1 && z > 0 && z < CaveNZ - 1 && flat[i] > -1.5f && flat[i] < 1.5f)
+                    {
+                        float gy = flat[CI(x, y + 1, z)] - flat[CI(x, y - 1, z)];
+                        float gx = flat[CI(x + 1, y, z)] - flat[CI(x - 1, y, z)];
+                        float gz = flat[CI(x, y, z + 1)] - flat[CI(x, y, z - 1)];
+                        float up = gy / Mathf.Max(1e-4f, Mathf.Sqrt(gx * gx + gy * gy + gz * gz)); // 1 = sol, -1 = plafond
+                        k *= Mathf.Lerp(1f, 0.15f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.25f, 0.7f, up)));
+                    }
+                    f[i] += Fbm(p) * k;
                 }
         return f;
     }

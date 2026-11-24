@@ -1584,7 +1584,13 @@ public static partial class EchoesMapGenerator
             if (p != null) { p.objectReferenceValue = sun.GetComponent<Light>(); so.ApplyModifiedPropertiesWithoutUndo(); }
         }
 
-        if (GameObject.FindGameObjectWithTag("Player") == null)
+        var existing = GameObject.FindGameObjectWithTag("Player");
+        if (existing != null && existing.TryGetComponent<CharacterController>(out var ecc))
+        {
+            ecc.stepOffset = 0.45f; ecc.slopeLimit = 55f; // roche des grottes : petites marches et pentes
+            EditorUtility.SetDirty(ecc);
+        }
+        if (existing == null)
         {
             var spawn = GameObject.Find("Chambre_Joueur");
             Vector3 pos = spawn != null ? spawn.transform.position + new Vector3(0.3f, 0.05f, -1f) : new Vector3(-2f, 3.6f, 1.5f);
@@ -1594,7 +1600,7 @@ public static partial class EchoesMapGenerator
             player.transform.rotation = Quaternion.Euler(0, 180f, 0); // regarde vers la porte
             var cc = player.AddComponent<CharacterController>();
             cc.height = 1.68f; cc.radius = 0.35f; cc.center = new Vector3(0, 0.84f, 0);
-            cc.stepOffset = 0.3f; cc.slopeLimit = 50f;
+            cc.stepOffset = 0.45f; cc.slopeLimit = 55f;
 
             var cam = new GameObject("Camera");
             cam.transform.SetParent(player.transform, false);
