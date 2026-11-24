@@ -15,9 +15,9 @@ using UnityEngine;
 public static partial class EchoesMapGenerator
 {
     // Volume du réseau : x, z ∈ [-90, 90], y ∈ [-82, -33] (le haut affleure le sol du -6)
-    const float CaveX0 = -90f, CaveY0 = -82f, CaveZ0 = -90f, CaveStep = 1f;
-    const int CaveNX = 181, CaveNY = 50, CaveNZ = 181;
-    const int CaveChunk = 32;
+    const float CaveX0 = -90f, CaveY0 = -82f, CaveZ0 = -90f, CaveStep = 0.5f;
+    const int CaveNX = 361, CaveNY = 99, CaveNZ = 361;
+    const int CaveChunk = 48;
     const string CaveMeshPath = MatFolder + "/CaveMeshes.asset";
 
     // Faille au sol du -6 : ouverte dans le champ (vide) et trou un peu plus petit dans la dalle (elle recouvre les bords)
@@ -354,7 +354,8 @@ public static partial class EchoesMapGenerator
                  L(L(Hash3(x, y, z + 1), Hash3(x + 1, y, z + 1), fx), L(Hash3(x, y + 1, z + 1), Hash3(x + 1, y + 1, z + 1), fx), fy), fz);
     }
 
-    static float Fbm(Vector3 p) => ValueNoise(p * 0.17f) * 0.65f + ValueNoise(p * 0.43f + new Vector3(31f, 7f, 13f)) * 0.35f;
+    static float Fbm(Vector3 p) => ValueNoise(p * 0.17f) * 0.6f + ValueNoise(p * 0.43f + new Vector3(31f, 7f, 13f)) * 0.3f
+        + ValueNoise(p * 1.1f + new Vector3(5f, 17f, 29f)) * 0.12f; // dernier octave : petits reliefs (grille de 0,5 m)
 
     // ───────────────────────── Surface (surface nets) ─────────────────────────
 
@@ -434,14 +435,35 @@ public static partial class EchoesMapGenerator
                     bool a = F[CI(x, y, z)] > 0f, b = F[CI(x, y, z + 1)] > 0f;
                     if (a != b) Quad(Cell(x - 1, y - 1, z), Cell(x, y - 1, z), Cell(x, y, z), Cell(x - 1, y, z), !b, Chunk(x, y, z));
                 }
+        // Lissage (Laplacien, 2 passes) : adoucit les facettes de la grille sans perdre le relief du bruit
+        var nb = new List<int>[verts.Count];
+        void Link(int u, int w) { (nb[u] ??= new List<int>(6)).Add(w); }
+        foreach (var (a, b, c, d, _) in quads) { Link(a, b); Link(b, c); Link(c, d); Link(d, a); Link(b, a); Link(c, b); Link(d, c); Link(a, d); }
+        for (int pass = 0; pass < 2; pass++)
+        {
+            var next = new Vector3[verts.Count];
+            for (int i = 0; i < verts.Count; i++)
+            {
+                if (nb[i] == null) { next[i] = verts[i]; continue; }
+                var avg = Vector3.zero;
+                foreach (int j in nb[i]) avg += verts[j];
+                next[i] = Vector3.Lerp(verts[i], avg / nb[i].Count, 0.5f);
+            }
+            for (int i = 0; i < verts.Count; i++) verts[i] = next[i];
+        }
+        for (int i = 0; i < normals.Length; i++) normals[i] = Vector3.zero;
+        foreach (var (a, b, c, d, _) in quads)
+        {
+            var fn = Vector3.Cross(verts[b] - verts[a], verts[c] - verts[a]) + Vector3.Cross(verts[c] - verts[a], verts[d] - verts[a]);
+            normals[a] += fn; normals[b] += fn; normals[c] += fn; normals[d] += fn;
+        }
         for (int i = 0; i < normals.Length; i++) normals[i] = normals[i].sqrMagnitude > 1e-8f ? normals[i].normalized : Vector3.up;
 
         // Morceaux de maillage (sol / parois), stockés dans un fichier de l'éditeur
         AssetDatabase.DeleteAsset(CaveMeshPath);
         var container = new Mesh { name = "CaveMeshes" };
         AssetDatabase.CreateAsset(container, CaveMeshPath);
-        var mWall = Mat("Grotte_Paroi", new Color(0.35f, 0.3f, 0.27f));
-        var mFloor = Mat("Grotte_Sol", new Color(0.3f, 0.26f, 0.22f));
+        var mRock = CaveRockMaterial();
 
         var byChunk = new Dictionary<int, List<int>>();
         for (int q = 0; q < quads.Count; q++)
@@ -454,7 +476,7 @@ public static partial class EchoesMapGenerator
         {
             var remap = new Dictionary<int, int>();
             var v = new List<Vector3>(); var nn = new List<Vector3>(); var uv = new List<Vector2>();
-            var floorTris = new List<int>(); var wallTris = new List<int>();
+            var tris = new List<int>();
             int Local(int g)
             {
                 if (remap.TryGetValue(g, out var l)) return l;
@@ -469,8 +491,6 @@ public static partial class EchoesMapGenerator
             foreach (int q in kv.Value)
             {
                 var (a, b, c, d, _) = quads[q];
-                var faceN = (normals[a] + normals[b] + normals[c] + normals[d]);
-                var tris = faceN.y > 0.55f * faceN.magnitude ? floorTris : wallTris;
                 int la = Local(a), lb = Local(b), lc = Local(c), ld = Local(d);
                 tris.Add(la); tris.Add(lb); tris.Add(lc);
                 tris.Add(la); tris.Add(lc); tris.Add(ld);
@@ -478,23 +498,46 @@ public static partial class EchoesMapGenerator
             var mesh = new Mesh { name = "Grotte_" + meshCount };
             if (v.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.SetVertices(v); mesh.SetNormals(nn); mesh.SetUVs(0, uv);
-            mesh.subMeshCount = 2;
-            mesh.SetTriangles(floorTris, 0);
-            mesh.SetTriangles(wallTris, 1);
+            mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds(); mesh.RecalculateTangents();
             AssetDatabase.AddObjectToAsset(mesh, container);
 
             var go = new GameObject(mesh.name);
             go.transform.SetParent(parent, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterials = new[] { mFloor, mWall };
+            go.AddComponent<MeshRenderer>().sharedMaterial = mRock;
             go.AddComponent<MeshCollider>().sharedMesh = mesh;
             go.layer = _layerGround;
             GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.OccluderStatic);
-            meshCount++; triCount += (floorTris.Count + wallTris.Count) / 3;
+            meshCount++; triCount += tris.Count / 3;
         }
         AssetDatabase.SaveAssets();
         Debug.Log($"[EchoesMap] Grottes : {meshCount} morceaux, {triCount} triangles.");
+    }
+
+    /// Matériau de roche triplanaire (paroi + sol mélangés selon la pente), textures Poly Haven.
+    static Material CaveRockMaterial()
+    {
+        Mat("Grotte_Paroi", new Color(0.35f, 0.3f, 0.27f)); // importe les textures des deux surfaces
+        Mat("Grotte_Sol", new Color(0.3f, 0.26f, 0.22f));
+        var shader = Shader.Find("TheEchoesBelow/Cave Triplanar");
+        if (shader == null) return Mat("Grotte_Paroi", new Color(0.35f, 0.3f, 0.27f));
+        string path = $"{MatFolder}/Grotte_Roche.mat";
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, path); }
+        m.shader = shader;
+        if (_texCache == null) _texCache = new Dictionary<string, Texture2D>();
+        string W = Surfaces["Grotte_Paroi"].id, F = Surfaces["Grotte_Sol"].id;
+        m.SetTexture("_WallMap", LoadTex($"{PolyHavenFolder}/{W}/{W}_diff_1k.jpg", TextureImporterType.Default, true));
+        m.SetTexture("_WallNormal", LoadTex($"{PolyHavenFolder}/{W}/{W}_nor_gl_1k.jpg", TextureImporterType.NormalMap, false));
+        m.SetTexture("_FloorMap", LoadTex($"{PolyHavenFolder}/{F}/{F}_diff_1k.jpg", TextureImporterType.Default, true));
+        m.SetTexture("_FloorNormal", LoadTex($"{PolyHavenFolder}/{F}/{F}_nor_gl_1k.jpg", TextureImporterType.NormalMap, false));
+        m.SetColor("_WallColor", new Color(0.55f, 0.48f, 0.42f));
+        m.SetColor("_FloorColor", new Color(0.3f, 0.26f, 0.22f)); // sol plus sombre que la paroi (sinon il paraît enneigé)
+        m.SetFloat("_WallScale", 7f);
+        m.SetFloat("_FloorScale", 4f);
+        EditorUtility.SetDirty(m);
+        return m;
     }
 
     // ───────────────────────── Décor ─────────────────────────
