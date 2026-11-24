@@ -88,7 +88,8 @@ public static class EchoesSnapshot
             ("◆ Vue_Sous_Sol_-2", "sous_sol_2", 1.5f, 4f),
             ("◆ Vue_Grotte_Faille", "grotte_faille", 1f, 8f),
             ("◆ Vue_Grotte_Foret", "grotte_foret", 1f, -4f),
-            ("◆ Vue_Grotte_Lac", "grotte_lac", 1f, 4f) })
+            ("◆ Vue_Grotte_Lac", "grotte_lac", 1f, 4f),
+            ("◆ Vue_Grotte_Campement", "grotte_campement", 1.3f, 20f) })
         {
         var studioView = GameObject.Find(markerName);
         if (studioView != null)

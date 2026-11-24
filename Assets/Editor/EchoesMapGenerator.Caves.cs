@@ -199,6 +199,7 @@ public static partial class EchoesMapGenerator
             lightColor = L.lightColor, lightIntensity = L.lightIntensity };
         var mp = Mat("Meuble_" + L.number, new Color(0.3f, 0.26f, 0.22f));
 
+        ResetCavePropMeshes();
         DecorateCaveEntrance(D);
         foreach (var n in nodes)
         {
@@ -231,6 +232,7 @@ public static partial class EchoesMapGenerator
         for (int k = 0; k < 30; k++) MushroomCluster(D, spots[_rng.Next(spots.Count)]);
         for (int k = 0; k < 12; k++) CrystalCluster(D, spots[_rng.Next(spots.Count)], _rng.Next(4, 9), 1f);
         for (int k = 0; k < 6; k++) BonePile(D, spots[_rng.Next(spots.Count)]);
+        ScatterBoulders(D, nodes);
         for (int k = 0; k < 4; k++)
             if (CaveFloor(spots[_rng.Next(spots.Count)], out var hbat)) PlaceItem(D, "pile", hbat.point, Rand(0f, 360f));
 
@@ -642,86 +644,9 @@ public static partial class EchoesMapGenerator
         var fill = PointLight(D, hc.point + Vector3.up * 3f, 16f, D.props);
         fill.color = new Color(0.4f, 0.8f, 0.45f); fill.intensity = 0.6f;
         for (int k = 0; k < 5; k++) MushroomCluster(D, n.c + new Vector3(Rand(-r, r) * 0.7f, 0f, Rand(-r, r) * 0.7f));
+        DecorateForestGround(D, n, r);
         Marker(D, "Foret_Souterraine", hc.point, Color.green);
         CaveView(D, "Vue_Grotte_Foret", n.c + new Vector3(r * 0.75f, -n.radii.y * 0.25f, 0f), n.c + Vector3.down * 3f);
-    }
-
-    static void DecorateCamp(LevelDef D, CaveNode n, Material mp)
-    {
-        if (!CaveFloor(n.c, out var h)) return;
-        var c = h.point;
-        Model(D, KSurvival + "bedroll", c + new Vector3(1.2f, 0, 0.6f), Rand(0f, 360f), new Vector3(0.9f, 0.3f, 2f), mp);
-        Prop(D, "Sac_A_Dos", c + new Vector3(-0.6f, 0.25f, 0.8f), new Vector3(0.4f, 0.5f, 0.3f), mp, Rand(0f, 360f));
-        Model(D, KGraveyard + "candle-multiple", c + new Vector3(0.2f, 0, -0.4f), 0f, new Vector3(0.3f, 0.3f, 0.3f), mp, false);
-        var lantern = PointLight(D, c + new Vector3(0.2f, 0.6f, -0.4f), 7f, D.props);
-        lantern.color = new Color(1f, 0.65f, 0.3f); lantern.intensity = 1.3f;
-        lantern.gameObject.AddComponent<LightFlicker>().strength = 0.35f;
-        PlaceItem(D, NextCaveNoteId(), c + new Vector3(-1.2f, 0f, -0.6f), Rand(0f, 360f));
-        PlaceItem(D, "pile", c + new Vector3(0.9f, 0f, -1f), Rand(0f, 360f));
-        BonePile(D, n.c + new Vector3(Rand(-4f, 4f), 0f, Rand(-4f, 4f)));
-        Marker(D, "Campement_Disparus", c, Color.yellow);
-    }
-
-    static void MushroomCluster(LevelDef D, Vector3 around)
-    {
-        if (!CaveWall(around, out var w)) return;
-        var nearWall = w.point + w.normal * Rand(0.4f, 1f);
-        if (!CaveFloor(nearWall + Vector3.up * 0.5f, out var f)) return;
-        var stem = Mat("Champignon_Pied", new Color(0.75f, 0.78f, 0.8f), 0.3f);
-        var cap = GlowMat("Champignon_Chapeau", new Color(0.25f, 0.85f, 1f), 2.2f);
-        var parent = Child(D.props, "Champignons");
-        int n = _rng.Next(5, 12);
-        for (int k = 0; k < n; k++)
-        {
-            var p = f.point + new Vector3(Rand(-0.8f, 0.8f), 0f, Rand(-0.8f, 0.8f));
-            float h = Rand(0.12f, 0.45f), r = h * Rand(0.35f, 0.6f);
-            var tilt = Quaternion.Euler(Rand(-12f, 12f), 0f, Rand(-12f, 12f));
-            Cylinder(parent, "Pied", p + Vector3.up * (h * 0.5f), r * 0.25f, h, tilt, stem, false);
-            var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            c.name = "Chapeau";
-            c.transform.SetParent(parent, false);
-            c.transform.SetPositionAndRotation(p + tilt * Vector3.up * h, tilt);
-            c.transform.localScale = new Vector3(r * 2f, r * 0.7f, r * 2f);
-            Object.DestroyImmediate(c.GetComponent<Collider>());
-            c.GetComponent<Renderer>().sharedMaterial = cap;
-            c.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        }
-        var l = PointLight(D, f.point + Vector3.up * 0.6f, 5.5f, parent);
-        l.color = new Color(0.3f, 0.85f, 1f); l.intensity = 1.3f;
-    }
-
-    static void CrystalCluster(LevelDef D, Vector3 around, int count, float scale)
-    {
-        if (!CaveWall(around, out var w)) return;
-        var m = GlowMat("Cristal", new Color(0.65f, 0.35f, 1f), 1.8f);
-        var parent = Child(D.props, "Cristaux");
-        for (int k = 0; k < count; k++)
-        {
-            var dir = (w.normal + Random.insideUnitSphere * 0.6f).normalized;
-            float len = Rand(0.4f, 1.4f) * scale, th = len * Rand(0.12f, 0.22f);
-            var p = w.point + Vector3.ProjectOnPlane(Random.insideUnitSphere * 0.7f * scale, w.normal);
-            Cube(parent, "Cristal", p + dir * (len * 0.4f), new Vector3(th, len, th), Quaternion.FromToRotation(Vector3.up, dir) * Quaternion.Euler(0f, Rand(0f, 90f), 0f), m, false, -1)
-                .GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        }
-        var l = PointLight(D, w.point + w.normal * 1.2f, 6f * scale, parent);
-        l.color = new Color(0.6f, 0.35f, 1f); l.intensity = 1.2f;
-    }
-
-    static void BonePile(LevelDef D, Vector3 around)
-    {
-        if (!CaveFloor(around, out var f)) return;
-        var bone = Mat("Ossements", new Color(0.82f, 0.78f, 0.68f), 0.2f);
-        var parent = Child(D.props, "Ossements");
-        for (int k = 0; k < _rng.Next(4, 8); k++)
-            Cylinder(parent, "Os", f.point + new Vector3(Rand(-0.6f, 0.6f), 0.03f, Rand(-0.6f, 0.6f)), Rand(0.018f, 0.03f), Rand(0.25f, 0.45f),
-                Quaternion.Euler(90f, Rand(0f, 360f), 0f), bone, false);
-        var skull = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        skull.name = "Crane";
-        skull.transform.SetParent(parent, false);
-        skull.transform.position = f.point + new Vector3(Rand(-0.4f, 0.4f), 0.09f, Rand(-0.4f, 0.4f));
-        skull.transform.localScale = new Vector3(0.16f, 0.17f, 0.2f);
-        Object.DestroyImmediate(skull.GetComponent<Collider>());
-        skull.GetComponent<Renderer>().sharedMaterial = bone;
     }
 
     static void BuildPitTrap(LevelDef D, Vector3 tunnelPoint, Vector3 backPoint)
