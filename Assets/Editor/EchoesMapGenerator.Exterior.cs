@@ -97,6 +97,7 @@ public static partial class EchoesMapGenerator
         holes.AddRange(_shaftRects);
         holes.Add(WingFootprint); // aile nord
         holes.Add(BridgeFootprint); // passerelle (au niveau du sol)
+        holes.Add(LakeBasin);       // cuvette du mini-lac (BuildPark)
         GroundAround(ext, Rect.MinMaxRect(-GroundX, GroundZ0, GroundX, GroundZ1), holes, gy - Slab, gy, Mat("Exterieur_Herbe", Color.white));
 
         // 2) Façade en brique (peau extérieure des étages 1 à 3)
@@ -159,7 +160,7 @@ public static partial class EchoesMapGenerator
         {
             var p = new Vector2(Rand(-GroundX + 3f, GroundX - 3f), Rand(GroundZ0 + 3f, GroundZ1 - 3f));
             bool inYard = YardRect.Contains(p);
-            if (inYard && (placed % 6 != 0)) continue;                   // ~1 sur 6 dans la cour
+            if (inYard) continue;                                         // la cour est aménagée par BuildPark
             if (wingOut.Contains(p)) continue;
             if (inYard && (keepOut.Contains(p) || (p.x > HalfX && Mathf.Abs(p.y - ExitZ) < 4f))) continue;
             if (!inYard && Mathf.Abs(p.x - YardRect.xMax) < 2.5f && Mathf.Abs(p.y - ExitZ) < 3f) continue;
@@ -202,7 +203,7 @@ public static partial class EchoesMapGenerator
         }
         // Rochers et souches pour casser la pelouse
         string[] rocks = { KSurvival + "rock-a", KSurvival + "rock-b", KSurvival + "rock-flat-grass", KSurvival + "tree-log-small", KSurvival + "tree-trunk" };
-        for (int i = 0; i < 18; i++)
+        for (int i = 0; i < 0; i++) // la cour est aménagée par BuildPark
         {
             var p = new Vector2(Rand(YardRect.xMin + 3f, YardRect.xMax - 3f), Rand(YardRect.yMin + 3f, YardRect.yMax - 3f));
             if (keepOut.Contains(p) || wingOut.Contains(p) || (p.x > HalfX && Mathf.Abs(p.y - ExitZ) < 3f)) continue;
@@ -211,6 +212,7 @@ public static partial class EchoesMapGenerator
         }
         // 6) Habillage des façades, toits, entrée, massifs, abri à vélos
         DecorateFacades(ext, X, gy, fy0);
+        BuildPark(ext, X, gy); // chemins, bancs, mini-lac, pique-nique, arbres, massifs
 
         // 7) Décor lointain : collines boisées, petite ville
         BuildBackdrop(X);

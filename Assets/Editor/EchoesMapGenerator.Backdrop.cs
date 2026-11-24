@@ -91,7 +91,7 @@ public static partial class EchoesMapGenerator
     // Forêt proche : vrais arbres (AltonGames) placés comme arbres du terrain.
     // Forêt lointaine : "imposteurs" (deux plans croisés avec une image des mêmes arbres), très légers.
 
-    const float TerrSize = 2400f, TerrHeight = 760f, TerrBase = -2f;
+    const float TerrSize = 2400f, TerrHeight = 760f, TerrBase = -4f;
     const int TerrRes = 513, TerrSplatRes = 512;
     const string TerrDataPath = MatFolder + "/Terrain_Decor.asset";
     const string TerrLayerFolder = MatFolder + "/Terrain_Couches";
@@ -120,7 +120,7 @@ public static partial class EchoesMapGenerator
     static float BackdropHeight(float x, float z)
     {
         float dist = YardDistance(x, z);
-        if (dist <= 0f) return -0.12f;
+        if (dist <= 0f) return YardRect.Contains(new Vector2(x, z)) ? -2.6f : -0.12f; // sous la cour : assez bas pour le mini-lac
         float valley = ValleyFactor(x, z);
         // Collines : relief doux qui monte à partir de la clôture
         float n = Perlin(x, z, 0.0042f, 100f, 300f) * 0.65f + Perlin(x, z, 0.011f, 40f, 20f) * 0.35f;
