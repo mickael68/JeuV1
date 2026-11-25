@@ -16,6 +16,8 @@ public class Door : MonoBehaviour, IInteractable
     public string requiredKeyId;
     [TextArea] public string lockedMessage = "C'est fermé à clé.";
     public string displayName = "la porte";
+    [Tooltip("0 : s'ouvre à l'opposé du joueur ; 1 ou -1 : toujours du même côté (pièces étroites).")]
+    public int openTowards;
     [Tooltip("Ouverte au lancement (angle positif ou négatif).")]
     public float startAngle;
 
@@ -75,7 +77,7 @@ public class Door : MonoBehaviour, IInteractable
             var player = Camera.main != null ? Camera.main.transform : null;
             Vector3 normal = (transform.parent != null ? transform.parent.rotation : Quaternion.identity) * _closed * Vector3.forward;
             float side = player != null ? Vector3.Dot(player.position - transform.position, normal) : 1f;
-            target = side > 0f ? openAngle : -openAngle;
+            target = openTowards != 0 ? openTowards * openAngle : side > 0f ? openAngle : -openAngle;
         }
 
         Play(target != 0f ? openClip : closeClip);

@@ -1610,6 +1610,7 @@ public static partial class EchoesMapGenerator
         if (existing != null && existing.TryGetComponent<CharacterController>(out var ecc))
         {
             ecc.stepOffset = 0.45f; ecc.slopeLimit = 55f; // roche des grottes : petites marches et pentes
+            ecc.radius = 0.3f;                              // passe les portes étroites (salles de bains)
             EditorUtility.SetDirty(ecc);
         }
         if (existing == null)
@@ -1621,7 +1622,7 @@ public static partial class EchoesMapGenerator
             player.transform.position = pos;
             player.transform.rotation = Quaternion.Euler(0, 180f, 0); // regarde vers la porte
             var cc = player.AddComponent<CharacterController>();
-            cc.height = 1.68f; cc.radius = 0.35f; cc.center = new Vector3(0, 0.84f, 0);
+            cc.height = 1.68f; cc.radius = 0.3f; cc.center = new Vector3(0, 0.84f, 0);
             cc.stepOffset = 0.45f; cc.slopeLimit = 55f;
 
             var cam = new GameObject("Camera");

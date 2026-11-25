@@ -558,6 +558,8 @@ public static partial class EchoesMapGenerator
         bool fx = Mathf.Abs(inward.x) > 0.5f;
         float halfF = (fx ? b.width : b.height) * 0.5f - Wall * 0.5f;   // demi-profondeur utile (porte → fond)
         float halfR = (fx ? b.height : b.width) * 0.5f - Wall * 0.5f;   // demi-longueur utile
+        const float showerLen = 0.85f, wcLen = 0.68f;
+        doorOffset = ((-halfR + wcLen) + (halfR - showerLen)) * 0.5f;      // milieu de l'espace libre (WC d'un côté, douche de l'autre)
         var doorMid = c - inward * (halfF + Wall * 0.5f) + right * doorOffset;
         float doorAlong = fx ? doorMid.z : doorMid.x;
 
@@ -572,6 +574,8 @@ public static partial class EchoesMapGenerator
         var door = BuildDoor(DoorsRoot(L), "Porte_Salle_De_Bains", doorMid + right * 0.36f + Vector3.up * 0.01f, doorYaw, 0.72f, 2.0f,
             Mat("Porte_Studio", new Color(0.75f, 0.6f, 0.45f)), "la salle de bains");
         door.displayName = "la salle de bains";
+        // La porte s'ouvre toujours vers l'extérieur : à l'intérieur, son battant bloquerait le passage
+        door.openTowards = Vector3.Dot(door.transform.rotation * Vector3.forward, inward) > 0f ? 1 : -1;
 
         TileFloor(L, Rect.MinMaxRect(b.xMin + 0.1f, b.yMin + 0.1f, b.xMax - 0.1f, b.yMax - 0.1f));
         var ceramic = Mat("Ceramique", new Color(0.95f, 0.95f, 0.94f), 0.85f);
@@ -580,28 +584,29 @@ public static partial class EchoesMapGenerator
         float faceBack = Mathf.Atan2(-inward.x, -inward.z) * Mathf.Rad2Deg; // dos au mur du fond, face à la porte
 
         // Douche à l'italienne au bout +right : receveur sur toute la profondeur, colonne au fond, paroi vitrée à moitié
-        const float showerLen = 0.85f;
         float sr = halfR - showerLen * 0.5f;
         var tray = Along(sr, 0f);
         Cube(L.props, "Receveur_Douche", tray + Vector3.up * 0.025f, new Vector3(showerLen, 0.05f, halfF * 2f - 0.02f), Quaternion.LookRotation(inward), ceramic, false, -1);
-        Piece(L, MP("Bathroom", "ShowerSystem01"), null, Along(sr, halfF - 0.08f), faceBack, new Vector3(0.4f, 2.1f, 0.4f), mp, false);
+        // Pomme de douche fixée en hauteur (le modèle n'est que la tête et son bras) + barre verticale jusqu'au mitigeur
+        var head = Piece(L, MP("Bathroom", "ShowerSystem01"), null, Along(sr, halfF - 0.08f), faceBack, new Vector3(0.3f, 0.5f, 0.45f), mp, false);
+        if (head != null && TryBounds(head, out var hb)) head.transform.position += Vector3.up * (y + 2.15f - hb.max.y);
+        var chrome = Mat("Chrome", new Color(0.8f, 0.8f, 0.82f), 0.9f);
+        chrome.SetFloat("_Metallic", 1f);
+        Cylinder(L.props, "Barre_Douche", Along(sr, halfF - 0.04f) + Vector3.up * 1.45f, 0.015f, 1.1f, Quaternion.identity, chrome, false);
+        Cube(L.props, "Mitigeur_Douche", Along(sr, halfF - 0.05f) + Vector3.up * 1.05f, new Vector3(0.18f, 0.07f, 0.06f), Quaternion.LookRotation(inward), chrome, false, -1);
         Cube(L.props, "Paroi_Douche", Along(halfR - showerLen, halfF * 0.45f) + Vector3.up * 1.0f, new Vector3(0.02f, 1.9f, halfF * 1.1f),
             Quaternion.LookRotation(inward), glass, false, -1);
 
-        // WC au milieu, contre le mur du fond
-        float wr = halfR - showerLen - 0.42f;
-        Piece(L, MP("Bathroom", "Toilet05", "Toilet01"), KFurniture + "toilet", Along(wr, halfF - 0.34f), faceBack, F(0.42f, 0.78f, 0.62f, faceBack), mp);
-        Piece(L, MP("Bathroom", "TissueHanger01"), null, Along(wr + 0.38f, halfF - 0.08f) + Vector3.up * 0.7f, faceBack, F(0.15f, 0.12f, 0.12f, faceBack), mp, false);
+        // WC au bout -right, de profil (dos au petit mur), pour laisser le passage devant la porte
+        float wcYaw = Mathf.Atan2(right.x, right.z) * Mathf.Rad2Deg;
+        Piece(L, MP("Bathroom", "Toilet05", "Toilet01"), KFurniture + "toilet", Along(-halfR + 0.34f, halfF * 0.3f), wcYaw, F(0.42f, 0.78f, 0.62f, wcYaw), mp);
+        Piece(L, MP("Bathroom", "TissueHanger01"), null, Along(-halfR + 0.08f, -halfF * 0.25f) + Vector3.up * 0.7f, wcYaw, new Vector3(0.12f, 0.12f, 0.15f), mp, false);
 
-        // Lavabo au bout -right, contre le mur du fond, avec miroir
-        float lr = -halfR + 0.32f;
-        if (lr + 0.22f < wr - 0.21f)
-        {
-            Piece(L, MP("Bathroom", "WashBasin06", "WashBasin07"), KFurniture + "bathroomSink", Along(lr, halfF - 0.22f), faceBack, F(0.45f, 0.9f, 0.4f, faceBack), mp);
-            var mirror = Mat("Miroir", new Color(0.7f, 0.75f, 0.78f), 1f);
-            Cube(L.props, "Miroir", Along(lr, halfF - 0.015f) + Vector3.up * 1.5f, new Vector3(0.45f, 0.6f, 0.02f), Quaternion.LookRotation(inward), mirror, false, -1);
-        }
-        Piece(L, MP("Bathroom", "TowelHanger01"), null, Along(-halfR + 0.02f, -halfF * 0.3f) + Vector3.up * 1.2f, Mathf.Atan2(right.x, right.z) * Mathf.Rad2Deg, new Vector3(0.12f, 0.3f, 0.5f), mp, false);
+        // Petit lavabo contre le mur du fond, en face de la porte, avec miroir
+        float lr = doorOffset;
+        Piece(L, MP("Bathroom", "WashBasin06", "WashBasin07"), KFurniture + "bathroomSink", Along(lr, halfF - 0.18f), faceBack, F(0.42f, 0.85f, 0.32f, faceBack), mp);
+        var mirror = Mat("Miroir", new Color(0.7f, 0.75f, 0.78f), 1f);
+        Cube(L.props, "Miroir", Along(lr, halfF - 0.015f) + Vector3.up * 1.5f, new Vector3(0.42f, 0.6f, 0.02f), Quaternion.LookRotation(inward), mirror, false, -1);
         var l = PointLight(L, c + Vector3.up * (L.h - 0.3f), 3f, L.props);
         l.intensity = 0.7f;
         if (L.number == 1 && L.markers.Find("◆ Vue_Salle_De_Bains") == null) // vue de contrôle (une seule)
