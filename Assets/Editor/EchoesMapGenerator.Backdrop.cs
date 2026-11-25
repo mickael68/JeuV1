@@ -120,7 +120,7 @@ public static partial class EchoesMapGenerator
     static float BackdropHeight(float x, float z)
     {
         float dist = YardDistance(x, z);
-        if (dist <= 0f) return YardRect.Contains(new Vector2(x, z)) ? -2.6f : -0.12f; // sous la cour : assez bas pour le mini-lac
+        if (dist <= 0f) return YardRect.Contains(new Vector2(x, z)) ? -0.12f : -0.12f; // la cour elle-même est percée (trou du terrain), voir BuildTerrain
         float valley = ValleyFactor(x, z);
         // Collines : relief doux qui monte à partir de la clôture
         float n = Perlin(x, z, 0.0042f, 100f, 300f) * 0.65f + Perlin(x, z, 0.011f, 40f, 20f) * 0.35f;
@@ -212,6 +212,16 @@ public static partial class EchoesMapGenerator
                 heights[j, i] = Mathf.Clamp01((BackdropHeight(x, z) - TerrBase) / TerrHeight);
             }
         td.SetHeights(0, 0, heights);
+        // Trou dans le terrain sous toute la cour : il ne doit jamais traverser les sous-sols (étage 0, -1…)
+        int hr = td.holesResolution;
+        var solid = new bool[hr, hr];
+        for (int j = 0; j < hr; j++)
+            for (int i = 0; i < hr; i++)
+            {
+                float x = x0 + TerrSize * (i + 0.5f) / hr, z = z0 + TerrSize * (j + 0.5f) / hr;
+                solid[j, i] = !Rect.MinMaxRect(YardRect.xMin - 1f, YardRect.yMin - 1f, YardRect.xMax + 1f, YardRect.yMax + 1f).Contains(new Vector2(x, z));
+            }
+        td.SetHoles(0, 0, solid);
 
         // Couches : herbe, sous-bois, rocher, neige, alpage (herbe et cailloux)
         EnsureFolder(TerrLayerFolder);

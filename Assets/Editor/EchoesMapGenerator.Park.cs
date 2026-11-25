@@ -13,8 +13,8 @@ public static partial class EchoesMapGenerator
     // Boucle du chemin (axes) et largeur
     const float LoopX0 = -32f, LoopX1 = 32f, LoopZ0 = -18f, LoopZ1 = 31f, PathW = 2.4f;
     // Mini-lac (ellipse) et aire de pique-nique
-    static readonly Vector2 LakeC = new Vector2(16f, -29f);
-    static readonly Vector2 LakeR = new Vector2(8.5f, 5.5f);
+    static readonly Vector2 LakeC = new Vector2(16f, -35f);   // hors de l'emprise de l'étage 0 (z > -30)
+    static readonly Vector2 LakeR = new Vector2(9f, 3.6f);
     const float LakeDepth = 2.0f, LakeWater = 0.25f;
     static readonly Rect PicnicRect = Rect.MinMaxRect(-27f, -34.5f, -9f, -22.5f);
     static Rect LakeBasin => Rect.MinMaxRect(LakeC.x - LakeR.x - 1.5f, LakeC.y - LakeR.y - 1.5f, LakeC.x + LakeR.x + 1.5f, LakeC.y + LakeR.y + 1.5f);
