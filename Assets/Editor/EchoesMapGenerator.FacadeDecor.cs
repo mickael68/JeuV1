@@ -29,7 +29,7 @@ public static partial class EchoesMapGenerator
         Rect shaft = default; bool hasShaft = false;
         foreach (var r in _shaftRects) if (r.xMax <= -HalfX + 0.5f) { shaft = r; hasShaft = true; break; }
         var main = new Block { name = "Batiment", r = Rect.MinMaxRect(-HalfX - 0.3f, CorrS - RoomDepth - 0.3f, HalfX + 0.3f, CorrN + RoomDepth + 0.3f),
-            gaps = new List<(char, float, float)> { ('N', WCx0 - 0.1f, WCx1 + 0.1f), ('E', ExitZ - ExitW * 0.5f - 0.25f, ExitZ + ExitW * 0.5f + 0.25f) } };
+            gaps = new List<(char, float, float)> { ('N', WCx0 - 0.1f, WCx1 + 0.1f) } };
         if (hasShaft) main.gaps.Add(('W', shaft.yMin - 0.1f, shaft.yMax + 0.1f));
         var wing = new Block { name = "Aile", r = Rect.MinMaxRect(WX0 - 0.3f, WZ0 - 0.3f, WX1 + 0.3f, WZ1 + 0.3f),
             gaps = new List<(char, float, float)> { ('S', WCx0 - 0.1f, WCx1 + 0.1f) } };
@@ -47,7 +47,11 @@ public static partial class EchoesMapGenerator
         foreach (var b in blocks)
         {
             // Soubassement (0,6 m au-dessus du sol), bandeaux à chaque plancher, corniche, acrotère + couvertine
-            Ring(parent, b, "Soubassement", fy0 - 0.05f, gy + 0.6f, 0.07f, stoneDark);
+            var bs = b;
+            if (b.name == "Batiment") // le soubassement s'interrompt devant la porte d'entrée
+                bs = new Block { name = b.name, r = b.r, skipN = b.skipN, skipS = b.skipS, skipE = b.skipE, skipW = b.skipW,
+                    gaps = new List<(char, float, float)>(b.gaps) { ('E', ExitZ - ExitW * 0.5f - 0.25f, ExitZ + ExitW * 0.5f + 0.25f) } };
+            Ring(parent, bs, "Soubassement", fy0 - 0.05f, gy + 0.6f, 0.07f, stoneDark);
             foreach (var n in new[] { 2, 3 })
             {
                 float ys = _levels[n].y - Slab;
@@ -200,12 +204,11 @@ public static partial class EchoesMapGenerator
     {
         float zc = ExitZ;
         var dark = Mat("Marquise", new Color(0.14f, 0.15f, 0.17f), 0.5f);
-        // Encadrement en pierre de la porte et pilastres de la travée d'entrée, du sol à la corniche
+        // Encadrement en pierre de la porte
         Cube(p, "Encadrement_Porte", new Vector3(faceX + 0.04f, gy + DoorH + 0.12f, zc), new Vector3(0.08f, 0.24f, ExitW + 0.5f), Quaternion.identity, stone, false, -1);
         foreach (var s in new[] { -1f, 1f })
         {
             Cube(p, "Encadrement_Porte", new Vector3(faceX + 0.04f, gy + DoorH * 0.5f, zc + s * (ExitW * 0.5f + 0.12f)), new Vector3(0.08f, DoorH, 0.24f), Quaternion.identity, stone, false, -1);
-            Cube(p, "Pilastre_Entree", new Vector3(faceX + 0.06f, (gy + FacadeTop) * 0.5f, zc + s * 2.4f), new Vector3(0.12f, FacadeTop - gy, 0.45f), Quaternion.identity, stone, false, -1);
         }
         // Marquise : dalle sombre + bandeau lumineux, deux poteaux
         Cube(p, "Marquise", new Vector3(faceX + 1.1f, gy + 2.75f, zc), new Vector3(2.2f, 0.14f, 3.6f), Quaternion.identity, dark, true, _layerWalls);
@@ -221,7 +224,7 @@ public static partial class EchoesMapGenerator
         Cube(p, "Paillasson", new Vector3(faceX + 0.5f, gy + 0.105f, zc), new Vector3(0.6f, 0.01f, 1.1f), Quaternion.identity, Mat("Paillasson", new Color(0.2f, 0.16f, 0.12f)), false, -1);
         // Enseigne au-dessus de la marquise
         var sign = new LevelDef { number = 1, y = gy, h = 4f, props = p, root = p };
-        PlaqueBig(sign, "RÉSIDENCE DU PARC", new Vector3(faceX + 0.02f, gy + 3.35f, zc), Vector3.right, 0.026f, 4.2f, 0.55f);
+        PlaqueBig(sign, "RÉSIDENCE DU PARC", new Vector3(faceX + 0.08f, gy + 3.0f, zc), Vector3.right, 0.02f, 3.4f, 0.36f); // entre la marquise et le bandeau de l'étage 2
         // Appliques murales de part et d'autre, interphone, boîte aux lettres, numéro
         foreach (var s in new[] { -1f, 1f })
         {
