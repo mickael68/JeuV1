@@ -103,7 +103,7 @@ public static partial class EchoesMapGenerator
         ["Lac_Berge"] = new Surface("dirt_floor", 2.5f, T(0.62f, 0.5f, 0.38f)),
         ["Ponton_Bois"] = new Surface("worn_planks", 2f, T(0.85f, 0.75f, 0.62f)),
         ["Massif_Terre"] = new Surface("dirt_floor", 2f, G(0.6f)),
-        ["Exterieur_Allee"] = new Surface("concrete_pavement", 2f, G(0.85f)),
+        ["Exterieur_Allee"] = new Surface("concrete_pavement", 1.6f, T(0.95f, 0.9f, 0.82f)), // même dallage que les chemins du parc
         ["Facade_Brique"] = new Surface("red_brick_03", 2.5f, G(0.9f)),
         ["Sol_Carrelage"] = new Surface("worn_tile_floor", 1.6f, G(0.95f)), // cafétéria, toilettes
         ["Grotte_Paroi"] = new Surface("cliff_side", 6f, T(0.55f, 0.48f, 0.42f)),

@@ -128,7 +128,7 @@ public static partial class EchoesMapGenerator
 
         // 3) Allée vers le portail (est)
         float pz0 = ExitZ - 1.1f, pz1 = ExitZ + 1.1f;
-        Box(ext, "Allee", new Vector3(xE + 2.6f, gy, pz0), new Vector3(YardRect.xMax, gy + 0.03f, pz1), mPath, _layerGround);
+        // (l'allée elle-même est construite avec les chemins du parc : même dallage, sans raccord — BuildPark)
         for (float x = xE + 7f; x < YardRect.xMax - 2f; x += 9f)
             StreetLamp(X, new Vector3(x, gy, pz1 + 0.6f));
 

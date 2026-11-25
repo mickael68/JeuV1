@@ -57,22 +57,17 @@ public static partial class EchoesMapGenerator
             Rect.MinMaxRect(WX1 + 0.4f, 7.2f, LoopX1 - PathW / 2, 9.4f),                          // cour intérieure → boucle est
             Rect.MinMaxRect(LakeC.x - 1f, LakeC.y + LakeR.y + 0.6f, LakeC.x + 1f, LoopZ0 - PathW / 2),     // boucle → lac
             Rect.MinMaxRect(PicnicRect.center.x - 1f, PicnicRect.yMax, PicnicRect.center.x + 1f, LoopZ0 - PathW / 2), // boucle → pique-nique
-            Rect.MinMaxRect(HalfX + 2.4f, CorrS - RoomDepth - 1.6f, HalfX + 3.6f, ExitZ - 1.1f),  // perron → vélos
+            Rect.MinMaxRect(HalfX + 2.4f, CorrS - RoomDepth - 1.6f, HalfX + 3.6f, ExitZ - 1.1f),  // perron → coffret
+            Rect.MinMaxRect(HalfX + 2.6f, ExitZ - 1.1f, LoopX1 - PathW / 2, ExitZ + 1.1f),          // allée d'entrée → boucle
+            Rect.MinMaxRect(LoopX1 + PathW / 2, ExitZ - 1.1f, YardRect.xMax, ExitZ + 1.1f),         // boucle → portail
         };
-        foreach (var r in paths)
-        {
-            Box(root, "Chemin", new Vector3(r.xMin, gy, r.yMin), new Vector3(r.xMax, gy + 0.035f, r.yMax), paving, _layerGround);
-            _parkBusy.Add(Rect.MinMaxRect(r.xMin - 0.6f, r.yMin - 0.6f, r.xMax + 0.6f, r.yMax + 0.6f));
-        }
-        // Bordures claires le long de la boucle
+        // Tous les chemins en un seul maillage, texture alignée sur le monde : raccords invisibles aux croisements
+        foreach (var r in paths) _parkBusy.Add(Rect.MinMaxRect(r.xMin - 0.6f, r.yMin - 0.6f, r.xMax + 0.6f, r.yMax + 0.6f));
+        PavedMesh(root, "Chemins", paths, gy + 0.035f, paving);
         var curb = Mat("Facade_Bandeau", new Color(0.82f, 0.8f, 0.75f));
-        foreach (var s in new[] { -1f, 1f })
-        {
-            Cube(root, "Bordure", new Vector3(0f, gy + 0.03f, LoopZ0 + s * (PathW / 2 + 0.06f)), new Vector3(LoopX1 - LoopX0 + PathW, 0.06f, 0.1f), Quaternion.identity, curb, false, -1);
-            Cube(root, "Bordure", new Vector3(0f, gy + 0.03f, LoopZ1 + s * (PathW / 2 + 0.06f)), new Vector3(LoopX1 - LoopX0 + PathW, 0.06f, 0.1f), Quaternion.identity, curb, false, -1);
-        }
+
         // Cour intérieure pavée
-        Box(root, "Cour_Pavee", new Vector3(WX0, gy, CorrN + RoomDepth + 0.3f), new Vector3(WX1, gy + 0.03f, WZ0 - 0.3f), paving, _layerGround);
+        PavedMesh(root, "Cour_Pavee", new List<Rect> { Rect.MinMaxRect(WX0, CorrN + RoomDepth + 0.3f, WX1, WZ0 - 0.3f) }, gy + 0.03f, paving);
 
         // 2) Bancs, lampadaires, poubelles le long de la boucle (côté extérieur)
         int benches = 0;
@@ -120,6 +115,45 @@ public static partial class EchoesMapGenerator
         CaveView(X, "Vue_Parc_Pique_Nique", new Vector3(PicnicRect.xMin + 0.4f, gy, PicnicRect.yMin + 0.4f), new Vector3(PicnicRect.center.x + 2f, gy, PicnicRect.center.y + 1f));
         CaveView(X, "Vue_Parc_Chemin", new Vector3(LoopX0, gy, LoopZ0 - 0.2f), new Vector3(LoopX0, gy, LoopZ1));
         Debug.Log($"[EchoesMap] Parc : boucle de {2 * (LoopX1 - LoopX0) + 2 * (LoopZ1 - LoopZ0):0} m, {benches} bancs, {trees} arbres, mini-lac, aire de pique-nique.");
+    }
+
+    /// Dalles (rectangles jointifs) en un seul maillage : dessus + chants, UV en mètres dans le repère du monde.
+    static void PavedMesh(Transform root, string name, List<Rect> rects, float top, Material m)
+    {
+        var v = new List<Vector3>(); var uv = new List<Vector2>(); var t = new List<int>();
+        float bottom = top - 0.12f;
+        void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector2 ua, Vector2 ub, Vector2 uc, Vector2 ud)
+        {
+            int i = v.Count;
+            v.Add(a); v.Add(b); v.Add(c); v.Add(d); uv.Add(ua); uv.Add(ub); uv.Add(uc); uv.Add(ud);
+            t.Add(i); t.Add(i + 1); t.Add(i + 2); t.Add(i); t.Add(i + 2); t.Add(i + 3);
+        }
+        foreach (var r in rects)
+        {
+            // dessus (sens horaire vu d'en haut)
+            Quad(new Vector3(r.xMin, top, r.yMin), new Vector3(r.xMin, top, r.yMax), new Vector3(r.xMax, top, r.yMax), new Vector3(r.xMax, top, r.yMin),
+                 new Vector2(r.xMin, r.yMin), new Vector2(r.xMin, r.yMax), new Vector2(r.xMax, r.yMax), new Vector2(r.xMax, r.yMin));
+            // chants (bordure de 3,5 cm visible au-dessus de la pelouse)
+            Quad(new Vector3(r.xMin, bottom, r.yMin), new Vector3(r.xMin, top, r.yMin), new Vector3(r.xMax, top, r.yMin), new Vector3(r.xMax, bottom, r.yMin),
+                 new Vector2(r.xMin, 0f), new Vector2(r.xMin, 0.12f), new Vector2(r.xMax, 0.12f), new Vector2(r.xMax, 0f));
+            Quad(new Vector3(r.xMax, bottom, r.yMax), new Vector3(r.xMax, top, r.yMax), new Vector3(r.xMin, top, r.yMax), new Vector3(r.xMin, bottom, r.yMax),
+                 new Vector2(r.xMax, 0f), new Vector2(r.xMax, 0.12f), new Vector2(r.xMin, 0.12f), new Vector2(r.xMin, 0f));
+            Quad(new Vector3(r.xMin, bottom, r.yMax), new Vector3(r.xMin, top, r.yMax), new Vector3(r.xMin, top, r.yMin), new Vector3(r.xMin, bottom, r.yMin),
+                 new Vector2(r.yMax, 0f), new Vector2(r.yMax, 0.12f), new Vector2(r.yMin, 0.12f), new Vector2(r.yMin, 0f));
+            Quad(new Vector3(r.xMax, bottom, r.yMin), new Vector3(r.xMax, top, r.yMin), new Vector3(r.xMax, top, r.yMax), new Vector3(r.xMax, bottom, r.yMax),
+                 new Vector2(r.yMin, 0f), new Vector2(r.yMin, 0.12f), new Vector2(r.yMax, 0.12f), new Vector2(r.yMax, 0f));
+        }
+        var mesh = new Mesh { name = name };
+        mesh.SetVertices(v); mesh.SetUVs(0, uv); mesh.SetTriangles(t, 0);
+        mesh.RecalculateNormals(); mesh.RecalculateBounds(); mesh.RecalculateTangents();
+        AssetDatabase.AddObjectToAsset(mesh, _boxContainer);
+        var go = new GameObject(name);
+        go.transform.SetParent(root, false);
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        go.AddComponent<MeshRenderer>().sharedMaterial = m;
+        go.AddComponent<MeshCollider>().sharedMesh = mesh;
+        go.layer = _layerGround;
+        GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
     }
 
     static bool ParkFreeLine(Vector2 p) => !LakeBasin.Contains(p) && !PicnicRect.Contains(p) && Mathf.Abs(p.x) > 1f;
