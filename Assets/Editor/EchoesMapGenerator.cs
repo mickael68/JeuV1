@@ -1399,8 +1399,10 @@ public static partial class EchoesMapGenerator
         go.SetParent(root, false);
         var elevator = go.gameObject.AddComponent<Elevator>();
         var mWall = Mat("Ascenseur_Mur", new Color(0.55f, 0.56f, 0.58f));
-        var mDoor = Mat("Ascenseur_Porte", new Color(0.72f, 0.74f, 0.78f), 0.7f);
-        var mCab = Mat("Ascenseur_Cabine", new Color(0.45f, 0.38f, 0.3f), 0.4f);
+        var mDoor = Mat("Ascenseur_Porte", new Color(0.66f, 0.67f, 0.69f), 0.72f);
+        mDoor.SetFloat("_Metallic", 0.85f);
+        var mCab = Mat("Ascenseur_Cabine", new Color(0.6f, 0.58f, 0.55f), 0.65f);   // inox brossé légèrement doré
+        mCab.SetFloat("_Metallic", 0.8f);
         var mButton = Mat("Ascenseur_Bouton", new Color(1f, 0.85f, 0.4f), 0.6f);
         int[] floors = { 3, 2, 1, 0 };
 
@@ -1417,10 +1419,9 @@ public static partial class EchoesMapGenerator
             NonStatic(door);
             elevator.stops.Add(new Elevator.Stop { floorNumber = n, height = L.y, door = door.transform });
 
-            var call = Cube(go, "Bouton_Appel_" + n, new Vector3(ElevDoorX + 1.05f, L.y + 1.2f, ElevFrontZ + 0.13f), new Vector3(0.14f, 0.22f, 0.05f), Quaternion.identity, mButton, true, -1);
-            NonStatic(call);
-            var cb = call.AddComponent<ElevatorButton>();
-            cb.elevator = elevator; cb.floorNumber = n; cb.isCallButton = true;
+            // Palier : plaque inox avec bouton d'appel lumineux, écran d'étage au-dessus de la porte
+            LandingCallPanel(go, elevator, n, new Vector3(ElevDoorX + 1.05f, L.y + 1.2f, ElevFrontZ + 0.12f));
+            ElevatorScreen(go, elevator, new Vector3(ElevDoorX, L.y + DoorH + 0.25f, ElevFrontZ + 0.12f), Vector3.forward, 0.5f);
         }
 
         // Cabine (part de l'étage 1, celui de la chambre du joueur)
@@ -1436,12 +1437,20 @@ public static partial class EchoesMapGenerator
         Cube(cab, "Facade_Gauche", c + new Vector3(-1.25f, 1.25f, 1.76f), new Vector3(1.1f, 2.5f, 0.08f), Quaternion.identity, mCab, true, _layerWalls);
         Cube(cab, "Facade_Droite", c + new Vector3(1.25f, 1.25f, 1.76f), new Vector3(1.1f, 2.5f, 0.08f), Quaternion.identity, mCab, true, _layerWalls);
 
-        for (int i = 0; i < floors.Length; i++)
-        {
-            var b = Cube(cab, "Bouton_Etage_" + floors[i], c + new Vector3(1.7f, 1.65f - i * 0.2f, 1.0f), new Vector3(0.05f, 0.14f, 0.14f), Quaternion.identity, mButton, true, -1);
-            var eb = b.AddComponent<ElevatorButton>();
-            eb.elevator = elevator; eb.floorNumber = floors[i];
-        }
+        // Linteau au-dessus de la porte (intérieur), avec l'écran d'étage
+        Cube(cab, "Linteau_Cabine", c + new Vector3(0f, 2.37f, 1.76f), new Vector3(1.4f, 0.26f, 0.08f), Quaternion.identity, mCab, true, _layerWalls);
+        ElevatorScreen(cab, elevator, c + new Vector3(0f, 2.37f, 1.71f), Vector3.back, 0.42f);
+        // Panneau de commande inox sur la paroi est, près de la porte
+        CabButtonPanel(cab, elevator, floors, c + new Vector3(1.715f, 1.25f, 1.05f));
+        // Finitions : main courante, miroir, plafonnier
+        var steel = ElevatorSteel();
+        Cube(cab, "Main_Courante", c + new Vector3(0f, 0.95f, -1.66f), new Vector3(3.2f, 0.04f, 0.04f), Quaternion.identity, steel, false, -1);
+        foreach (var x in new[] { -1.5f, 1.5f })
+            Cube(cab, "Main_Courante_Support", c + new Vector3(x, 0.95f, -1.7f), new Vector3(0.03f, 0.03f, 0.08f), Quaternion.identity, steel, false, -1);
+        var mirror = Mat("Miroir", new Color(0.7f, 0.75f, 0.78f), 1f);
+        Cube(cab, "Miroir_Cabine", c + new Vector3(0f, 1.75f, -1.715f), new Vector3(2.2f, 1.0f, 0.01f), Quaternion.identity, mirror, false, -1);
+        var ceilGlow = GlowMat("Plafonnier_Cabine", new Color(1f, 0.92f, 0.8f), 1.2f);
+        Cube(cab, "Plafonnier_Cabine", c + new Vector3(0f, 2.49f, 0f), new Vector3(1.6f, 0.02f, 1.6f), Quaternion.identity, ceilGlow, false, -1);
 
         var lightGo = new GameObject("Lumiere_Cabine");
         lightGo.transform.SetParent(cab, false);
@@ -1458,6 +1467,103 @@ public static partial class EchoesMapGenerator
         elevator.arrivalClip = SndElevatorArrival;
         elevator.doorSlide = 1.35f; // la porte ouverte reste cachée dans la gaine
         Marker(_levels[0], "Panne_Ascenseur (musique de panne)", new Vector3(ElevDoorX, 0f, ElevRect.yMax + 0.6f), Color.magenta);
+    }
+
+    static Material ElevatorSteel()
+    {
+        var m = Mat("Ascenseur_Inox", new Color(0.72f, 0.73f, 0.75f), 0.75f);
+        m.SetFloat("_Metallic", 0.9f);
+        return m;
+    }
+
+    /// Texte 3D lumineux (afficheur LED) : lisible face à "outward".
+    static TextMesh LedText(Transform p, string name, Vector3 pos, Vector3 outward, float charSize, Color color, string text)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(p, false);
+        go.transform.SetPositionAndRotation(pos + outward * 0.004f, Quaternion.LookRotation(-outward, Vector3.up));
+        var tm = go.AddComponent<TextMesh>();
+        tm.text = text;
+        tm.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        tm.fontSize = 64;
+        tm.characterSize = charSize;
+        tm.anchor = TextAnchor.MiddleCenter;
+        tm.alignment = TextAlignment.Center;
+        tm.color = color;
+        if (tm.font != null) go.GetComponent<MeshRenderer>().sharedMaterial = TextMaterial(tm.font);
+        return tm;
+    }
+
+    /// Écran d'étage : boîtier noir et chiffres rouges (étage + flèche de direction), piloté par ElevatorDisplay.
+    static void ElevatorScreen(Transform p, Elevator elevator, Vector3 center, Vector3 outward, float width)
+    {
+        var rot = Quaternion.LookRotation(-outward, Vector3.up);
+        Cube(p, "Ecran_Ascenseur_Cadre", center - outward * 0.005f, new Vector3(width + 0.05f, Mathf.Min(0.15f, width * 0.45f) + 0.05f, 0.02f), rot, ElevatorSteel(), false, -1);
+        float hgt = Mathf.Min(0.15f, width * 0.45f);
+        Cube(p, "Ecran_Ascenseur", center + outward * 0.012f, new Vector3(width, hgt, 0.01f), rot, Mat("Ecran_Noir", new Color(0.02f, 0.02f, 0.02f), 0.9f), false, -1);
+        var tm = LedText(p, "Ecran_Ascenseur_Texte", center + outward * 0.02f, outward, hgt * 0.17f, new Color(1f, 0.25f, 0.08f), "1");
+        var d = tm.gameObject.AddComponent<ElevatorDisplay>();
+        d.elevator = elevator;
+        d.text = tm;
+    }
+
+    /// Bouton rond lumineux (corps inox, voyant qui s'allume quand son étage est demandé).
+    static ElevatorButton RoundButton(Transform p, Elevator elevator, int floor, bool call, Vector3 pos, Vector3 outward, float radius)
+    {
+        var steel = ElevatorSteel();
+        var off = Mat("Ascenseur_Bouton_Eteint", new Color(0.85f, 0.85f, 0.82f), 0.6f);
+        var on = GlowMat("Ascenseur_Bouton_Allume", new Color(1f, 0.75f, 0.3f), 2.2f);
+        var rot = Quaternion.FromToRotation(Vector3.up, outward);
+        Cylinder(p, "Bouton_Bague", pos, radius * 1.3f, 0.012f, rot, steel, false);
+        var b = Cylinder(p, call ? "Bouton_Appel" : "Bouton_Etage_" + floor, pos + outward * 0.008f, radius, 0.012f, rot, off, true);
+        b.GetComponent<Collider>().isTrigger = false;
+        NonStatic(b);
+        var eb = b.AddComponent<ElevatorButton>();
+        eb.elevator = elevator; eb.floorNumber = floor; eb.isCallButton = call;
+        eb.lamp = b.GetComponent<Renderer>(); eb.lampOff = off; eb.lampOn = on;
+        return eb;
+    }
+
+    /// Panneau de commande de la cabine (paroi est, tourné vers -x) : petit écran, boutons d'étage gravés,
+    /// boutons d'ouverture / fermeture des portes et d'alarme.
+    static void CabButtonPanel(Transform cab, Elevator elevator, int[] floors, Vector3 center)
+    {
+        var outward = Vector3.left;
+        var rot = Quaternion.LookRotation(-outward, Vector3.up);
+        Cube(cab, "Panneau_Commande", center - Vector3.up * 0.05f, new Vector3(0.3f, 1.1f, 0.015f), rot, ElevatorSteel(), false, -1);
+        var engrave = new Color(0.12f, 0.12f, 0.13f);
+        // Écran en haut du panneau
+        ElevatorScreen(cab, elevator, center + Vector3.up * 0.4f + outward * 0.01f, outward, 0.22f);
+        // Boutons d'étage (du plus haut au plus bas), étiquette gravée à gauche de chaque bouton
+        var leftOfViewer = Vector3.Cross(outward, Vector3.up) * -1f; // gauche vu de face
+        for (int i = 0; i < floors.Length; i++)
+        {
+            var bp = center + Vector3.up * (0.2f - i * 0.13f) + outward * 0.01f - leftOfViewer * 0.04f;
+            RoundButton(cab, elevator, floors[i], false, bp, outward, 0.032f);
+            LedText(cab, "Etiquette_" + floors[i], bp + leftOfViewer * 0.085f, outward, 0.012f, engrave, floors[i].ToString());
+        }
+        // Ouverture / fermeture (décoratifs) et alarme
+        var deco = Mat("Ascenseur_Bouton_Eteint", new Color(0.85f, 0.85f, 0.82f), 0.6f);
+        var yb = center + Vector3.up * (0.2f - floors.Length * 0.13f - 0.04f) + outward * 0.01f;
+        foreach (var (dx, label) in new[] { (-0.055f, "<|>"), (0.055f, ">|<") })
+        {
+            var p = yb + leftOfViewer * dx;
+            Cylinder(cab, "Bouton_Porte", p + outward * 0.006f, 0.026f, 0.012f, Quaternion.FromToRotation(Vector3.up, outward), deco, false);
+            LedText(cab, "Etiquette_Porte", p + outward * 0.014f, outward, 0.006f, engrave, label);
+        }
+        var bell = GlowMat("Ascenseur_Alarme", new Color(1f, 0.8f, 0.1f), 0.6f);
+        var ab = yb - Vector3.up * 0.11f - leftOfViewer * 0.04f;
+        Cylinder(cab, "Bouton_Alarme", ab + outward * 0.006f, 0.03f, 0.012f, Quaternion.FromToRotation(Vector3.up, outward), bell, false);
+        LedText(cab, "Etiquette_Alarme", ab + leftOfViewer * 0.085f + outward * 0.01f, outward, 0.006f, engrave, "ALARME");
+    }
+
+    /// Plaque d'appel au palier : plaque inox verticale, bouton rond lumineux et flèche gravée.
+    static void LandingCallPanel(Transform p, Elevator elevator, int floor, Vector3 center)
+    {
+        var outward = Vector3.forward;
+        Cube(p, "Plaque_Appel", center - outward * 0.005f, new Vector3(0.14f, 0.3f, 0.012f), Quaternion.identity, ElevatorSteel(), false, -1);
+        RoundButton(p, elevator, floor, true, center + Vector3.down * 0.03f + outward * 0.002f, outward, 0.03f);
+        LedText(p, "Fleche_Appel", center + Vector3.up * 0.09f + outward * 0.002f, outward, 0.012f, new Color(0.12f, 0.12f, 0.13f), floor == 0 ? "▲" : floor == 3 ? "▼" : "▲▼");
     }
 
     // ───────────────────────── Tunnel d'aération (-2 → -3) ─────────────────────────

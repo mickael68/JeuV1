@@ -81,8 +81,7 @@ public static partial class EchoesMapGenerator
         ["Escalier_Mur"] = new Surface("concrete_wall_008", 3f, G(0.8f)),
         ["Escalier_Marche"] = new Surface("concrete_floor_worn_001", 1.5f, G(0.8f)),
         ["Ascenseur_Mur"] = new Surface("metal_plate", 2f, G(0.9f), 0.6f),
-        ["Ascenseur_Porte"] = new Surface("metal_plate", 1.5f, G(1f), 0.6f),
-        ["Ascenseur_Cabine"] = new Surface("metal_plate", 1.5f, T(0.85f, 0.75f, 0.65f), 0.6f),
+        // (cabine et portes : inox brossé uni, sans la tôle striée)
         ["Grille_Metal"] = new Surface("rusty_metal_02", 1f, G(0.6f), 0.5f),
         ["Tunnel_Aeration"] = new Surface("rusty_metal_02", 1.5f, G(0.8f), 0.5f),
 

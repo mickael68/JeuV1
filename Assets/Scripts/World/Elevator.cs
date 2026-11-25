@@ -46,6 +46,25 @@ public class Elevator : MonoBehaviour
     public bool IsBroken => _broken;
     public bool IsMoving => _moving;
     public int CurrentFloor => stops.Count > 0 ? stops[_current].floorNumber : 0;
+    /// Sens du déplacement : 1 monte, -1 descend, 0 à l'arrêt.
+    public int Direction { get; private set; }
+    /// Étage demandé pendant le trajet (int.MinValue à l'arrêt).
+    public int TargetFloor { get; private set; } = int.MinValue;
+    /// Étage à afficher : celui dont la cabine est la plus proche (change pendant le trajet).
+    public int DisplayFloor
+    {
+        get
+        {
+            if (stops.Count == 0 || cab == null) return 0;
+            int best = 0; float d = float.MaxValue;
+            for (int i = 0; i < stops.Count; i++)
+            {
+                float e = Mathf.Abs(stops[i].height - cab.position.y);
+                if (e < d) { d = e; best = i; }
+            }
+            return stops[best].floorNumber;
+        }
+    }
 
     private int _current;
     private bool _moving, _broken;
@@ -93,6 +112,8 @@ public class Elevator : MonoBehaviour
     private IEnumerator Travel(int target)
     {
         _moving = true;
+        TargetFloor = stops[target].floorNumber;
+        Direction = stops[target].height > cab.position.y ? 1 : -1;
         yield return AnimateDoor(_current, 0f);
 
         var player = GameObject.FindGameObjectWithTag("Player");
@@ -109,6 +130,7 @@ public class Elevator : MonoBehaviour
             yield return null;
         }
         _current = target;
+        Direction = 0;
         if (_audio != null) _audio.Stop();
         if (riding && player != null) player.transform.SetParent(null, true);
 
@@ -123,6 +145,7 @@ public class Elevator : MonoBehaviour
         else Play(arrivalClip, false);
 
         yield return AnimateDoor(_current, 1f);
+        TargetFloor = int.MinValue;
         _moving = false;
     }
 
