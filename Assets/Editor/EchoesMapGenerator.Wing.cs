@@ -309,6 +309,23 @@ public static partial class EchoesMapGenerator
         return m;
     }
 
+    /// Met un objet exactement aux dimensions demandées (axes du monde), posé au sol en "floor" (centré en x/z).
+    static void FitExact(GameObject go, Vector3 floor, Vector3 size)
+    {
+        if (go == null || !TryBounds(go, out var b)) return;
+        var f = new Vector3(size.x / Mathf.Max(0.01f, b.size.x), size.y / Mathf.Max(0.01f, b.size.y), size.z / Mathf.Max(0.01f, b.size.z));
+        var t = go.transform;
+        var ls = t.localScale;
+        for (int i = 0; i < 3; i++)
+        {
+            var axis = t.rotation * (i == 0 ? Vector3.right : i == 1 ? Vector3.up : Vector3.forward);
+            axis = new Vector3(Mathf.Abs(axis.x), Mathf.Abs(axis.y), Mathf.Abs(axis.z));
+            ls[i] *= Vector3.Dot(axis, f) / Mathf.Max(0.01f, axis.x + axis.y + axis.z);
+        }
+        t.localScale = ls;
+        Ground(go, floor);
+    }
+
     /// Centre d'un meuble de largeur w posé contre un mur entre a et b, qui ne cache aucune fenêtre (centres "wins"),
     /// le plus près possible de "preferred".
     static float FreeSpot(float a, float b, float w, float[] wins, float preferred)
@@ -363,23 +380,56 @@ public static partial class EchoesMapGenerator
         for (float z = hatchC - hatchW * 0.5f + 0.6f; z < hatchC + hatchW * 0.5f - 0.5f; z += 1.1f) // bacs gastronormes
             Cube(L.props, "Bac_Service", new Vector3(KitchenX - 0.05f, y + 0.955f, z), new Vector3(0.32f, 0.04f, 0.5f), Quaternion.identity, inox, false, -1);
 
-        // Cuisine : rangée d'appareils contre le mur ouest, îlot central inox, étagères
-        string[] row = { "Kitchen/Refrigerator02", "Kitchen/Refrigerator02", "Kitchen/CabinetC_Sink", "Kitchen/CabinetC01", "Kitchen/GasStove01",
-                         "Kitchen/KitchenOven01", "Kitchen/GasStove01", "Kitchen/CabinetC02", "Kitchen/KitchenOven01", "Kitchen/GasStove01",
-                         "Kitchen/CabinetC_Sink", "Kitchen/CabinetC01", "Kitchen/CabinetC02", "Kitchen/Refrigerator02" };
-        float z0 = r.yMin + 0.5f;
-        foreach (var piece in row)
+        // Cuisine : rangée de modules de 0,65 m contre le mur ouest, tous à la même taille, sous un plan de travail continu.
+        // Sous les fenêtres : meubles bas et éviers. Ailleurs : frigos (aux bouts), fours avec plaque de cuisson et hotte.
+        const float mod = 0.65f, depth = 0.62f, baseH = 0.88f;
+        float wallX = r.xMin + 0.02f, rowX = wallX + depth * 0.5f;
+        float za = r.yMin + 0.3f, zb = r.yMax - 0.3f;
+        int count = Mathf.FloorToInt((zb - za) / mod);
+        bool UnderWindow(float z) { foreach (var w in WingWestWinZ) if (Mathf.Abs(z - w) < WinW * 0.5f + mod * 0.5f + 0.05f) return true; return false; }
+        var kinds = new string[count];
+        var free = new List<int>();
+        for (int i = 0; i < count; i++) { kinds[i] = "base"; if (!UnderWindow(za + (i + 0.5f) * mod)) free.Add(i); }
+        foreach (var w in WingWestWinZ) { int i = Mathf.FloorToInt((w - za) / mod); if (i >= 0 && i < count) kinds[i] = "sink"; } // évier sous chaque fenêtre
+        if (free.Count > 0) kinds[free[0]] = "fridge";
+        if (free.Count > 1) kinds[free[free.Count - 1]] = "fridge";
+        for (int k = 2; k < free.Count - 2; k += 3) kinds[free[k]] = "oven";
+        for (int k = 1; k < free.Count - 1; k += 6) if (kinds[free[k]] == "base") kinds[free[k]] = "micro";
+        var topMat = Mat("Plan_Travail", new Color(0.78f, 0.77f, 0.74f), 0.55f);
+        int runStart = -1;
+        for (int i = 0; i <= count; i++)
         {
-            bool fridge = piece.Contains("Refrigerator");
-            var fit = fridge ? F(0.8f, 2.0f, 0.75f, 90f) : F(0.65f, 0.92f, 0.65f, 90f);
-            var go = Piece(L, new[] { piece }, KFurniture + "kitchenCabinet", new Vector3(r.xMin + 0.42f, y, z0 + 0.35f), 90f, fit, mp);
-            float wz = go != null && TryBounds(go, out var b) ? Mathf.Max(0.6f, b.size.z) : 0.7f;
-            if (piece.Contains("GasStove"))
-                Piece(L, MP("Kitchen", "KitchenExhaust01"), null, new Vector3(r.xMin + 0.35f, y + 1.75f, z0 + wz * 0.5f), 90f, F(0.8f, 0.7f, 0.55f, 90f), mp, false);
-            if (piece == "Kitchen/CabinetC02")
-                Piece(L, MP("Kitchen", "MicrowaveOven02"), null, new Vector3(r.xMin + 0.35f, y + 0.93f, z0 + wz * 0.5f), 90f, F(0.5f, 0.32f, 0.4f, 90f), mp, false);
-            z0 += wz + 0.02f;
-            if (z0 > r.yMax - 0.9f) break;
+            bool tall = i == count || kinds[i] == "fridge";
+            if (!tall && runStart < 0) runStart = i;
+            if (tall && runStart >= 0) // plan de travail continu sur la série de modules bas
+            {
+                float z0p = za + runStart * mod, z1p = za + i * mod;
+                Cube(L.props, "Plan_De_Travail", new Vector3(rowX + 0.02f, y + baseH + 0.02f, (z0p + z1p) * 0.5f), new Vector3(depth + 0.04f, 0.04f, z1p - z0p), Quaternion.identity, topMat, true, _layerFurniture);
+                runStart = -1;
+            }
+            if (i == count) break;
+            var pos = new Vector3(rowX, y, za + (i + 0.5f) * mod);
+            switch (kinds[i])
+            {
+                case "fridge":
+                    FitExact(Piece(L, MP("Kitchen", "Refrigerator02"), KFurniture + "kitchenFridge", pos, 90f, new Vector3(depth, 1.95f, mod), mp), pos, new Vector3(depth, 1.95f, mod - 0.02f));
+                    break;
+                case "sink":
+                    FitExact(Piece(L, MP("Kitchen", "CabinetC_Sink"), KFurniture + "kitchenSink", pos, 90f, new Vector3(depth, baseH, mod), mp), pos, new Vector3(depth, baseH, mod - 0.01f));
+                    break;
+                case "oven":
+                    FitExact(Piece(L, MP("Kitchen", "KitchenOven01"), KFurniture + "kitchenStove", pos, 90f, new Vector3(depth, baseH, mod), mp), pos, new Vector3(depth, baseH, mod - 0.01f));
+                    var hob = Piece(L, MP("Kitchen", "GasStove01"), null, pos + Vector3.up * (baseH + 0.04f), 90f, new Vector3(depth * 0.85f, 0.08f, mod * 0.9f), mp, false);
+                    FitExact(hob, pos + Vector3.up * (baseH + 0.04f), new Vector3(depth * 0.85f, 0.06f, mod * 0.88f));
+                    var hood = Piece(L, MP("Kitchen", "KitchenExhaust01"), null, pos + Vector3.up * 1.6f, 90f, new Vector3(depth, 0.8f, mod * 1.1f), mp, false);
+                    FitExact(hood, new Vector3(rowX - 0.02f, y + 1.62f, pos.z), new Vector3(depth * 0.9f, 0.75f, mod * 1.1f));
+                    break;
+                default:
+                    FitExact(Piece(L, MP("Kitchen", i % 2 == 0 ? "CabinetC01" : "CabinetC02"), KFurniture + "kitchenCabinet", pos, 90f, new Vector3(depth, baseH, mod), mp), pos, new Vector3(depth, baseH, mod - 0.01f));
+                    if (kinds[i] == "micro")
+                        Piece(L, MP("Kitchen", "MicrowaveOven02"), null, pos + Vector3.up * (baseH + 0.04f), 90f, F(0.5f, 0.3f, 0.4f, 90f), mp, false);
+                    break;
+            }
         }
         Cube(L.props, "Ilot_Inox", new Vector3(-9.6f, y + 0.46f, 19f), new Vector3(1.0f, 0.92f, 6f), Quaternion.identity, inox, true, _layerFurniture);
         Cube(L.props, "Ilot_Etagere", new Vector3(-9.6f, y + 0.15f, 19f), new Vector3(0.9f, 0.03f, 5.8f), Quaternion.identity, inox, false, -1);
