@@ -710,7 +710,7 @@ public static partial class EchoesMapGenerator
         var top = Mat("Comptoir_Plateau", new Color(0.85f, 0.84f, 0.8f), 0.6f);
         var glass = GlassMat();
         float y = L.y, y1 = L.y + L.h;
-        float cz = CorrS - 0.75f;                     // le comptoir, à 0,75 m du couloir
+        float cz = CorrS - 1.35f;                     // le comptoir : 1 m de passage devant, jusqu'à la porte du personnel
         float x0 = r.xMin + 0.15f, x1 = r.xMax - 0.85f;
         Cube(L.props, "Comptoir_Accueil", new Vector3((x0 + x1) * 0.5f, y + 0.52f, cz), new Vector3(x1 - x0, 1.04f, 0.6f), Quaternion.identity, wood, true, _layerFurniture);
         Cube(L.props, "Comptoir_Plateau", new Vector3((x0 + x1) * 0.5f, y + 1.06f, cz + 0.05f), new Vector3(x1 - x0 + 0.04f, 0.04f, 0.72f), Quaternion.identity, top, true, _layerFurniture);

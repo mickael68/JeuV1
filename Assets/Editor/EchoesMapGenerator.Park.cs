@@ -15,7 +15,7 @@ public static partial class EchoesMapGenerator
     // Mini-lac (ellipse) et aire de pique-nique
     static readonly Vector2 LakeC = new Vector2(16f, -35f);   // hors de l'emprise de l'étage 0 (z > -30)
     static readonly Vector2 LakeR = new Vector2(9f, 3.6f);
-    const float LakeDepth = 2.0f, LakeWater = 0.25f;
+    const float LakeDepth = 1.45f, LakeWater = 0.25f;
     static readonly Rect PicnicRect = Rect.MinMaxRect(-27f, -34.5f, -9f, -22.5f);
     static Rect LakeBasin => Rect.MinMaxRect(LakeC.x - LakeR.x - 1.5f, LakeC.y - LakeR.y - 1.5f, LakeC.x + LakeR.x + 1.5f, LakeC.y + LakeR.y + 1.5f);
 
@@ -251,7 +251,7 @@ public static partial class EchoesMapGenerator
         water.transform.localScale = new Vector3(LakeR.x * 2f * k, 0.01f, LakeR.y * 2f * k);
         water.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         water.AddComponent<Unity.AI.Navigation.NavMeshModifier>().ignoreFromBuild = true;
-        WaterVolumeBox(root, "Lac_Patauger", new Vector3(LakeC.x, gy - 0.5f, LakeC.y), new Vector3(LakeR.x * 1.6f * k, 1.2f, LakeR.y * 1.6f * k), Quaternion.identity, 0.55f);
+        WaterVolumeBox(root, "Lac_Patauger", new Vector3(LakeC.x, gy - 0.9f, LakeC.y), new Vector3(LakeR.x * 1.9f * k, 1.5f, LakeR.y * 1.9f * k), Quaternion.identity, 0.55f, gy - LakeWater);
         WaterSound(root, new Vector3(LakeC.x, gy, LakeC.y), SndRiver, 0.12f, 18f);
 
         // Pierres et roseaux sur la berge, ponton en bois au nord

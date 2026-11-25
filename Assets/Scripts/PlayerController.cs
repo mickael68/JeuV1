@@ -295,6 +295,7 @@ public class PlayerController : MonoBehaviour
         float targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
         if (_isCrouching) targetSpeed *= crouchSpeedMultiplier;
         targetSpeed *= WaterVolume.PlayerSpeedMultiplier; // on avance moins vite dans l'eau
+        if (UnderwaterEffect.Active) targetSpeed *= 0.6f;      // et encore moins la tête sous l'eau
 
         // ── Direction ──
         float inputX = KeyBindings.Axis(GameAction.Left, GameAction.Right, KeyCode.LeftArrow, KeyCode.RightArrow);

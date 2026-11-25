@@ -53,7 +53,7 @@ public static partial class EchoesMapGenerator
     static Material WaterFlood => WaterMat("Eau_Inondation", new Color(0.45f, 0.5f, 0.52f), new Color(0.01f, 0.02f, 0.03f), 0.25f, 0.05f, 0.2f, 0.7f, 0.05f);
 
     /// Volume (déclencheur) où l'on patauge : ralentit et fait des pas mouillés.
-    static void WaterVolumeBox(Transform p, string name, Vector3 center, Vector3 size, Quaternion rot, float slow)
+    static void WaterVolumeBox(Transform p, string name, Vector3 center, Vector3 size, Quaternion rot, float slow, float surfaceY = float.NaN)
     {
         var go = new GameObject(name);
         go.transform.SetParent(p, false);
@@ -64,6 +64,7 @@ public static partial class EchoesMapGenerator
         var wv = go.AddComponent<WaterVolume>();
         wv.speedMultiplier = slow;
         wv.splash = SndWaterSteps;
+        if (!float.IsNaN(surfaceY)) { wv.hasSurface = true; wv.surfaceY = surfaceY; }
         NonStatic(go);
     }
 
@@ -79,6 +80,7 @@ public static partial class EchoesMapGenerator
         var wv = go.AddComponent<WaterVolume>();
         wv.speedMultiplier = slow;
         wv.splash = SndWaterSteps;
+        wv.hasSurface = true; wv.surfaceY = surface.y; // lac : on peut passer sous la surface
         NonStatic(go);
     }
 

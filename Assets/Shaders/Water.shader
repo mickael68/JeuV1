@@ -29,7 +29,7 @@ Shader "TheEchoesBelow/Water"
             Tags { "LightMode" = "UniversalForward" }
             ZWrite On
             Blend Off
-            Cull Back
+            Cull Off   // la surface se voit aussi depuis dessous (sous l'eau)
 
             HLSLPROGRAM
             #pragma target 3.5
@@ -94,7 +94,7 @@ Shader "TheEchoesBelow/Water"
                 return slope * _WaveStrength;
             }
 
-            half4 Frag(Varyings i) : SV_Target
+            half4 Frag(Varyings i, bool front : SV_IsFrontFace) : SV_Target
             {
                 float t = _Time.y;
                 float2 p = i.positionWS.xz - i.flowDir * (_FlowSpeed * t);
@@ -103,6 +103,16 @@ Shader "TheEchoesBelow/Water"
 
                 // Profondeur d'eau vue à travers ce pixel
                 float2 uv = i.screenPos.xy / i.screenPos.w;
+
+                // Vue depuis dessous : le monde au-dessus, déformé et assombri par l'eau
+                if (!front)
+                {
+                    float2 uvU = uv + n.xz * _Refraction * 2.5;
+                    half3 above = SampleSceneColor(uvU);
+                    float fade = saturate(i.screenPos.w / 8.0);
+                    half3 cU = lerp(above * _ShallowColor.rgb * 0.7, _DeepColor.rgb * 2.0, 0.35 + 0.55 * fade);
+                    return half4(MixFog(cU, i.fogFactor), 1);
+                }
                 float surfDepth = i.screenPos.w;
                 float sceneDepth = LinearEyeDepth(SampleSceneDepth(uv), _ZBufferParams);
                 float depth = max(0, sceneDepth - surfDepth);

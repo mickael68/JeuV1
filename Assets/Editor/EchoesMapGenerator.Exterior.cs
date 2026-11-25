@@ -140,6 +140,14 @@ public static partial class EchoesMapGenerator
         FenceLine(X, new Vector3(YardRect.xMax, gy, YardRect.yMin), new Vector3(YardRect.xMax, gy, YardRect.yMax), mFence, new Vector2(pz0 - 0.6f, pz1 + 0.6f));
         var gate = Model(X, KGraveyard + "iron-fence-border-gate", new Vector3(YardRect.xMax, gy, ExitZ), 90f, new Vector3(0.4f, 2.4f, 3.4f), mFence);
         FitInGap(gate, YardRect.xMax, pz0 - 0.6f, pz1 + 0.6f);
+        // Portail cadenassé : bloque le passage ; en mode dev, E l'ouvre (accès au parking)
+        float gz0 = pz0 - 0.6f, gz1 = pz1 + 0.6f;
+        var lockGo = Cube(ext, "Portail_Verrouille", new Vector3(YardRect.xMax, gy + 1.4f, (gz0 + gz1) * 0.5f), new Vector3(0.3f, 2.8f, gz1 - gz0), Quaternion.identity, mFence, true, _layerWalls);
+        lockGo.GetComponent<Renderer>().enabled = false;
+        if (gate != null) gate.transform.SetParent(lockGo.transform, true);
+        var lg = lockGo.AddComponent<LockedGate>();
+        lg.lockedMessage = "Le portail de la résidence est cadenassé.";
+        NonStatic(lockGo);
         Marker(X, "Portail_Ferme (sortie de la residence)", new Vector3(YardRect.xMax - 1.5f, gy, ExitZ), Color.yellow);
 
         // Murs invisibles : on ne sort pas de la cour
@@ -147,7 +155,23 @@ public static partial class EchoesMapGenerator
         Box(ext, "Limite", new Vector3(YardRect.xMin - 0.5f, gy, YardRect.yMin - 0.5f), new Vector3(YardRect.xMax + 0.5f, gy + wh, YardRect.yMin), mFence, _layerWalls).GetComponent<Renderer>().enabled = false;
         Box(ext, "Limite", new Vector3(YardRect.xMin - 0.5f, gy, YardRect.yMax), new Vector3(YardRect.xMax + 0.5f, gy + wh, YardRect.yMax + 0.5f), mFence, _layerWalls).GetComponent<Renderer>().enabled = false;
         Box(ext, "Limite", new Vector3(YardRect.xMin - 0.5f, gy, YardRect.yMin), new Vector3(YardRect.xMin, gy + wh, YardRect.yMax), mFence, _layerWalls).GetComponent<Renderer>().enabled = false;
-        Box(ext, "Limite", new Vector3(YardRect.xMax, gy, YardRect.yMin), new Vector3(YardRect.xMax + 0.5f, gy + wh, YardRect.yMax), mFence, _layerWalls).GetComponent<Renderer>().enabled = false;
+        // côté est : ouvert au niveau du portail (fermé par le portail lui-même)
+        Box(ext, "Limite", new Vector3(YardRect.xMax, gy, YardRect.yMin), new Vector3(YardRect.xMax + 0.5f, gy + wh, gz0), mFence, _layerWalls).GetComponent<Renderer>().enabled = false;
+        Box(ext, "Limite", new Vector3(YardRect.xMax, gy, gz1), new Vector3(YardRect.xMax + 0.5f, gy + wh, YardRect.yMax), mFence, _layerWalls).GetComponent<Renderer>().enabled = false;
+        // Hors de la cour : on ne peut aller que sur l'accès et le parking
+        {
+            var pr = ParkingRect;
+            void Lim(float xa, float za, float xb, float zb) =>
+                Box(ext, "Limite_Parking", new Vector3(xa, gy, za), new Vector3(xb, gy + wh, zb), mFence, _layerWalls).GetComponent<Renderer>().enabled = false;
+            float az0 = ExitZ - 2.5f, az1 = ExitZ + 2.5f;
+            Lim(YardRect.xMax + 0.5f, az0 - 0.5f, pr.xMin, az0);            // accès, côté sud
+            Lim(YardRect.xMax + 0.5f, az1, pr.xMin, az1 + 0.5f);            // accès, côté nord
+            Lim(pr.xMin - 0.5f, pr.yMin - 0.5f, pr.xMax + 0.5f, pr.yMin);   // parking sud
+            Lim(pr.xMin - 0.5f, pr.yMax, pr.xMax + 0.5f, pr.yMax + 0.5f);   // parking nord
+            Lim(pr.xMax, pr.yMin, pr.xMax + 0.5f, pr.yMax);                 // parking est
+            Lim(pr.xMin - 0.5f, pr.yMin, pr.xMin, az0);                     // parking ouest (de part et d'autre de l'accès)
+            Lim(pr.xMin - 0.5f, az1, pr.xMin, pr.yMax);
+        }
 
         // 5) Arbres : bois dense hors de la cour, quelques arbres dans la cour
         string[] trees = { KSurvival + "tree-autumn-tall", KSurvival + "tree-autumn", KSurvival + "tree-tall", KSurvival + "tree", KGraveyard + "pine", KGraveyard + "pine-crooked" };
