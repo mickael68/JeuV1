@@ -97,6 +97,7 @@ public static partial class EchoesMapGenerator
         ["Facade_Soubassement"] = new Surface("concrete_wall_008", 2f, G(0.7f)),
         ["Facade_Bandeau"] = new Surface("brushed_concrete", 2f, T(1f, 0.97f, 0.9f)),
         ["Toit_Gravier"] = new Surface("concrete_floor_worn_001", 3f, G(0.55f)),
+        ["Parking_Asphalte"] = new Surface("asphalt_02", 4f, G(0.75f)),
         ["Parc_Allee"] = new Surface("concrete_pavement", 1.6f, T(0.95f, 0.9f, 0.82f)),
         ["Parc_Gravier"] = new Surface("rocky_terrain_02", 2f, T(0.85f, 0.8f, 0.72f)),
         ["Lac_Berge"] = new Surface("dirt_floor", 2.5f, T(0.62f, 0.5f, 0.38f)),

@@ -73,3 +73,7 @@ Godot_*/
 # Sons téléchargés (Pixabay / Freesound) : gardés en local, le dépôt est public
 /Assets/Sounds/Ambiance/
 /Assets/Sounds/Ambiance.meta
+
+# Pack de voitures (Asset Store, non redistribuable)
+Assets/Vehicles/
+Assets/Vehicles.meta

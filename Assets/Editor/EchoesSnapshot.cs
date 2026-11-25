@@ -88,6 +88,7 @@ public static class EchoesSnapshot
             ("◆ Conduit_Arrivee (ramper : accroupi)", "conduit_aeration", 0.35f, 5f),
             ("◆ Vue_Cafeteria", "residence_cafeteria", 1.6f, 14f),
             ("◆ Vue_Parc_Lac", "parc_lac", 1.7f, 8f),
+            ("◆ Vue_Parking", "parking", 1.7f, 6f),
             ("◆ Vue_Parc_Pique_Nique", "parc_pique_nique", 1.7f, 8f),
             ("◆ Vue_Parc_Chemin", "parc_chemin", 1.7f, 4f),
             ("◆ Vue_Cuisine", "residence_cuisine", 1.6f, 12f),

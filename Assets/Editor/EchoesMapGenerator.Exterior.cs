@@ -160,6 +160,8 @@ public static partial class EchoesMapGenerator
             bool inYard = YardRect.Contains(p);
             if (inYard) continue;                                         // la cour est aménagée par BuildPark
             if (wingOut.Contains(p)) continue;
+            if (Rect.MinMaxRect(ParkingRect.xMin - 4f, ParkingRect.yMin - 4f, ParkingRect.xMax + 4f, ParkingRect.yMax + 4f).Contains(p) ||
+                (p.x > YardRect.xMax - 1f && p.x < ParkingRect.xMin && Mathf.Abs(p.y - ExitZ) < 5f)) continue; // parking et son accès
             if (inYard && (keepOut.Contains(p) || (p.x > HalfX && Mathf.Abs(p.y - ExitZ) < 4f))) continue;
             if (!inYard && Mathf.Abs(p.x - YardRect.xMax) < 2.5f && Mathf.Abs(p.y - ExitZ) < 3f) continue;
             if (Mathf.Abs(p.x - YardRect.xMin) < 1.5f || Mathf.Abs(p.x - YardRect.xMax) < 1.5f ||
@@ -211,6 +213,7 @@ public static partial class EchoesMapGenerator
         // 6) Habillage des façades, toits, entrée, massifs, abri à vélos
         DecorateFacades(ext, X, gy, fy0);
         BuildPark(ext, X, gy); // chemins, bancs, mini-lac, pique-nique, arbres, massifs
+        BuildParking(ext, X, gy); // petit parking devant le portail
 
         // 7) Décor lointain : collines boisées, petite ville
         BuildBackdrop(X);
