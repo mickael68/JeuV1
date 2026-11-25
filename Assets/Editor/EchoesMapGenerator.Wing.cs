@@ -309,6 +309,37 @@ public static partial class EchoesMapGenerator
         return m;
     }
 
+    /// Centre d'un meuble de largeur w posé contre un mur entre a et b, qui ne cache aucune fenêtre (centres "wins"),
+    /// le plus près possible de "preferred".
+    static float FreeSpot(float a, float b, float w, float[] wins, float preferred)
+    {
+        float best = preferred, bestD = float.MaxValue;
+        for (float c = a + w * 0.5f; c <= b - w * 0.5f + 1e-3f; c += 0.05f)
+        {
+            bool ok = true;
+            foreach (var x in wins) if (Mathf.Abs(c - x) < (w + WinW) * 0.5f + 0.1f) { ok = false; break; }
+            if (ok && Mathf.Abs(c - preferred) < bestD) { bestD = Mathf.Abs(c - preferred); best = c; }
+        }
+        return best;
+    }
+
+    /// Centres d'autant de meubles de largeur w que possible contre un mur [a, b], entre les fenêtres.
+    static List<float> WallSpans(float a, float b, float w, float[] wins)
+    {
+        var res = new List<float>();
+        var cuts = new List<float> { a };
+        var sorted = new List<float>(wins); sorted.Sort();
+        foreach (var x in sorted) { cuts.Add(x - WinW * 0.5f - 0.1f); cuts.Add(x + WinW * 0.5f + 0.1f); }
+        cuts.Add(b);
+        for (int k = 0; k + 1 < cuts.Count; k += 2)
+        {
+            float u = Mathf.Max(a, cuts[k]), v = Mathf.Min(b, cuts[k + 1]);
+            int n = Mathf.FloorToInt((v - u + 0.05f) / (w + 0.1f));
+            for (int i = 0; i < n; i++) res.Add(u + (v - u) * (i + 0.5f) / n);
+        }
+        return res;
+    }
+
     // ───────────────────────── Salles communes ─────────────────────────
 
     static void FurnishCafeteria(LevelDef L, Rect r)
@@ -354,8 +385,8 @@ public static partial class EchoesMapGenerator
         Cube(L.props, "Ilot_Etagere", new Vector3(-9.6f, y + 0.15f, 19f), new Vector3(0.9f, 0.03f, 5.8f), Quaternion.identity, inox, false, -1);
         foreach (var z in new[] { 16.8f, 18.4f, 20.2f, 21.6f })
             CaveProp(L, "pot_enamel_01", new Vector3(-9.6f + Rand(-0.25f, 0.25f), y + 0.92f, z), Rand(0f, 360f), new Vector3(0.3f, 0.2f, 0.3f));
-        CaveProp(L, "steel_frame_shelves_02", new Vector3(-8.2f, y, r.yMax - 0.45f), 180f, F(1.6f, 2.0f, 0.5f, 180f), true);
-        CaveProp(L, "steel_frame_shelves_02", new Vector3(-8.2f, y, r.yMin + 0.45f), 0f, F(1.6f, 2.0f, 0.5f, 0f), true);
+        CaveProp(L, "steel_frame_shelves_02", new Vector3(FreeSpot(r.xMin + 0.2f, KitchenX - 0.2f, 1.6f, WingNorthWinX, -8.2f), y, r.yMax - 0.45f), 180f, F(1.6f, 2.0f, 0.5f, 180f), true);
+        CaveProp(L, "steel_frame_shelves_02", new Vector3(FreeSpot(r.xMin + 0.2f, KitchenX - 0.2f, 1.6f, WingSouthWinX, -8.2f), y, r.yMin + 0.45f), 0f, F(1.6f, 2.0f, 0.5f, 0f), true);
         CeilingLight(L, L.props, new Vector3(-9.5f, y1, 15f), 7f);
         CeilingLight(L, L.props, new Vector3(-9.5f, y1, 22.5f), 7f);
 
@@ -386,8 +417,8 @@ public static partial class EchoesMapGenerator
                 if (roll < 0.3) CaveProp(L, "classic_laptop", new Vector3(tx + Rand(-0.3f, 0.3f), y + 0.78f, tz + 0.05f), Rand(160f, 200f), F(0.38f, 0.3f, 0.3f, 180f));
                 else if (roll < 0.55) CaveProp(L, "book_encyclopedia_set_01", new Vector3(tx + Rand(-0.4f, 0.4f), y + 0.78f, tz + 0.12f), Rand(0f, 360f), new Vector3(0.4f, 0.3f, 0.4f));
             }
-        CaveProp(L, "standing_chalkboard_01", new Vector3(-5.6f, y, r.yMax - 0.7f), 180f, F(1.8f, 2.0f, 0.8f, 180f));
-        for (float z = r.yMin + 1.2f; z < r.yMax - 1f; z += 2.1f) // bibliothèques contre le mur ouest
+        CaveProp(L, "standing_chalkboard_01", new Vector3(FreeSpot(r.xMin + 0.5f, r.xMax - 0.5f, 1.9f, WingNorthWinX, -5.6f), y, r.yMax - 0.7f), 180f, F(1.8f, 2.0f, 0.8f, 180f));
+        foreach (var z in WallSpans(r.yMin + 0.2f, r.yMax - 0.2f, 1.9f, WingWestWinZ)) // bibliothèques contre le mur ouest, entre les fenêtres
             Piece(L, MP("Closets", "Closet04", "Closet09"), KFurniture + "bookcaseClosedWide", new Vector3(r.xMin + 0.33f, y, z), 90f, F(1.9f, 2.2f, 0.55f, 90f), mp);
         CaveProp(L, "wall_clock", new Vector3(-3f, y + 2.4f, r.yMax - 0.1f), 180f, new Vector3(0.35f, 0.35f, 0.12f));
         CaveProp(L, "potted_plant_02", new Vector3(-0.2f, y, r.yMax - 0.5f), 0f, new Vector3(0.7f, 1.3f, 0.7f));
@@ -402,9 +433,9 @@ public static partial class EchoesMapGenerator
         var mp = Mat("Meuble_" + L.number, Color.Lerp(L.wall, L.floor, 0.5f) * 0.9f);
         float y = L.y, y1 = L.y + L.h;
         // Coin télé : grande télé plate au mur ouest, meuble bas + console, canapés en L, table basse
-        float tvz = 16.5f;
-        FlatTv(L, new Vector3(r.xMin + 0.1f + 0.06f, y + 1.45f, tvz), Vector3.right, 1.6f, TvOffMat());
-        var stand = Piece(L, MP("Tables", "Table35"), KFurniture + "tableCoffee", new Vector3(r.xMin + 0.4f, y, tvz), 90f, F(1.7f, 0.5f, 0.5f, 90f), mp);
+        float tvz = FreeSpot(r.yMin + 1f, r.yMax - 3f, 1.9f, WingWestWinZ, 15f);   // entre deux fenêtres
+        FlatTv(L, new Vector3(r.xMin + 0.1f + 0.06f, y + 1.5f, tvz), Vector3.right, 1.6f, TvOffMat());
+        var stand = Piece(L, MP("Drawers", "Drawer31", "Drawer39"), KFurniture + "tableCoffee", new Vector3(r.xMin + 0.35f, y, tvz), 90f, F(1.8f, 0.6f, 0.5f, 90f), mp);
         float top = stand != null && TryBounds(stand, out var sb) ? sb.max.y : y + 0.5f;
         CaveProp(L, "gaming_console", new Vector3(r.xMin + 0.4f, top, tvz + 0.4f), 90f, F(0.42f, 0.12f, 0.35f, 90f));
         MakeSeat(Piece(L, MP("Sofas", "Sofa34", "Sofa36"), KFurniture + "loungeSofa", new Vector3(r.xMin + 4.2f, y, tvz), -90f, F(2.3f, 0.9f, 1.0f, -90f), mp), -90f, "S'asseoir sur le canapé");
@@ -502,7 +533,7 @@ public static partial class EchoesMapGenerator
         }
         CaveProp(L, "CoffeeCart_01", new Vector3(r.xMax - 0.5f, y, z + 0.8f), -90f, F(1.1f, 1.1f, 0.6f, -90f), true);
         // Coin télé : télé plate au mur nord, canapé, fauteuil, table basse
-        FlatTv(L, new Vector3(7.5f, y + 1.45f, r.yMax - 0.1f - 0.06f), Vector3.back, 1.4f, TvOffMat());
+        FlatTv(L, new Vector3(FreeSpot(r.xMin + 1f, r.xMax - 2f, 1.5f, WingNorthWinX, 8f), y + 1.5f, r.yMax - 0.1f - 0.06f), Vector3.back, 1.4f, TvOffMat());
         MakeSeat(Piece(L, MP("Sofas", "Sofa36", "Sofa34"), KFurniture + "loungeSofa", new Vector3(7.5f, y, r.yMax - 3.6f), 0f, F(2.2f, 0.9f, 1.0f, 0f), mp), 0f, "S'asseoir sur le canapé");
         MakeSeat(Piece(L, MP("Chairs", "Chair16"), KFurniture + "loungeChair", new Vector3(5.2f, y, r.yMax - 2.2f), 60f, F(0.95f, 0.9f, 0.95f, 60f), mp), 60f, "S'asseoir dans le fauteuil");
         Piece(L, MP("Tables", "Table33"), KFurniture + "tableCoffee", new Vector3(7.5f, y, r.yMax - 2.1f), 0f, F(1.2f, 0.45f, 0.7f, 0f), mp);
@@ -526,15 +557,21 @@ public static partial class EchoesMapGenerator
         var bath = Rect.MinMaxRect(r.xMin, r.yMin, r.xMin + 2.8f, r.yMin + 1.75f);
         SmallBathroom(L, bath, Vector3.back, -0.55f, false, true, false, true);
         // Lit double tête contre le mur est, chevets, armoire, bureau, fauteuil
-        var bed = Piece(L, MegaBeds, KFurniture + "bedDouble", new Vector3(r.xMax - 1.15f, y, r.center.y), -90f, F(1.6f, 1.1f, 2.15f, -90f), mp);
+        float bedZ = FreeSpot(r.yMin + 1.9f, r.yMax - 0.1f, 1.7f, WingEastWinZ, r.center.y);
+        var bed = Piece(L, MegaBeds, KFurniture + "bedDouble", new Vector3(r.xMax - 1.15f, y, bedZ), -90f, F(1.6f, 1.1f, 2.15f, -90f), mp);
         if (bed != null) AddSeat(bed, 0.5f, 90f, Vector3.zero, "S'asseoir sur le lit");
         Piece(L, MegaNightstands, KFurniture + "sideTable", new Vector3(r.xMax - 0.3f, y, r.yMax - 0.45f), -90f, F(0.5f, 0.6f, 0.45f, -90f), mp);
-        Piece(L, MegaClosets, KFurniture + "bookcaseClosedDoors", new Vector3(r.center.x + 1.2f, y, r.yMax - 0.36f), 180f, F(1.5f, 2.1f, 0.62f, 180f), mp);
-        var desk = Piece(L, MegaDesks, KFurniture + "desk", new Vector3(r.xMin + 3.4f, y, r.yMax - 0.45f), 180f, F(1.4f, 0.78f, 0.7f, 180f), mp);
-        MakeSeat(Piece(L, MP("Chairs", "Chair31", "Chair33"), KFurniture + "chairDesk", new Vector3(r.xMin + 3.4f, y, r.yMax - 1.15f), 0f, F(0.62f, 1.1f, 0.62f, 0f), mp), 0f);
+                // Mur nord : fenêtres seulement pour le studio du fond (contre la façade)
+        float[] northWins = r.yMax > WZ1 - 0.5f ? WingNorthWinX : new float[0];
+        float deskX = FreeSpot(r.xMin + 2.9f, r.xMax - 2.6f, 1.5f, northWins, r.xMin + 3.4f);
+        float closetX = FreeSpot(r.xMin + 2.9f, r.xMax - 2.6f, 1.6f, northWins, r.center.x + 1.2f);
+        if (Mathf.Abs(closetX - deskX) < 1.6f) closetX = FreeSpot(deskX + 1.6f, r.xMax - 2.6f, 1.6f, northWins, deskX + 1.7f);
+        Piece(L, MegaClosets, KFurniture + "bookcaseClosedDoors", new Vector3(closetX, y, r.yMax - 0.36f), 180f, F(1.5f, 2.1f, 0.62f, 180f), mp);
+        var desk = Piece(L, MegaDesks, KFurniture + "desk", new Vector3(deskX, y, r.yMax - 0.45f), 180f, F(1.4f, 0.78f, 0.7f, 180f), mp);
+        MakeSeat(Piece(L, MP("Chairs", "Chair31", "Chair33"), KFurniture + "chairDesk", new Vector3(deskX, y, r.yMax - 1.15f), 0f, F(0.62f, 1.1f, 0.62f, 0f), mp), 0f);
         float top = desk != null && TryBounds(desk, out var db) ? db.max.y : y + 0.78f;
-        CaveProp(L, "classic_laptop", new Vector3(r.xMin + 3.3f, top, r.yMax - 0.5f), 180f, F(0.38f, 0.3f, 0.3f, 180f));
-        CaveProp(L, "vintage_radio_transceiver", new Vector3(r.xMin + 3.85f, top, r.yMax - 0.4f), 170f, F(0.4f, 0.24f, 0.28f, 170f));
+        CaveProp(L, "classic_laptop", new Vector3(deskX - 0.1f, top, r.yMax - 0.5f), 180f, F(0.38f, 0.3f, 0.3f, 180f));
+        CaveProp(L, "vintage_radio_transceiver", new Vector3(deskX + 0.45f, top, r.yMax - 0.4f), 170f, F(0.4f, 0.24f, 0.28f, 170f));
         MakeSeat(Piece(L, MegaArmchairs, KFurniture + "loungeChair", new Vector3(r.center.x - 0.5f, y, r.yMin + 1.0f), 20f, F(0.9f, 0.95f, 0.9f, 20f), mp), 20f, "S'asseoir dans le fauteuil");
         CaveProp(L, "wall_clock", new Vector3(r.center.x + 2f, y + 2.3f, r.yMin + 0.12f), 0f, new Vector3(0.32f, 0.32f, 0.1f));
         CaveProp(L, "potted_plant_02", new Vector3(r.xMax - 0.5f, y, r.yMin + 0.5f), 0f, new Vector3(0.6f, 1.2f, 0.6f));
