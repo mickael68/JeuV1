@@ -62,8 +62,9 @@ public static partial class EchoesMapGenerator
         var roofMat = Mat("Toit_Gravier", new Color(0.42f, 0.41f, 0.39f));
         foreach (var b in new[] { main, wing, bridge })
             Cube(parent, "Toit_" + b.name, new Vector3(b.r.center.x, top + 0.015f, b.r.center.y), new Vector3(b.r.width - 0.05f, 0.03f, b.r.height - 0.05f), Quaternion.identity, roofMat, false, -1);
-        RoofEquipment(parent, main.r, top, metal, true);
-        RoofEquipment(parent, wing.r, top, metal, false);
+        var roofL = new LevelDef { number = 1, y = top, h = 3f, root = parent, props = Child(parent, "Toit_Equipements"), markers = X.markers };
+        RoofEquipment(roofL, main.r, top, true);
+        RoofEquipment(roofL, wing.r, top, false);
 
         // Descentes d'eau pluviale aux angles
         foreach (var b in new[] { main, wing })
@@ -91,7 +92,7 @@ public static partial class EchoesMapGenerator
         EastCorridorWindows(parent);
         BuildEntrance(parent, X, gy, main.r.xMax, stone, metal);
         FlowerBeds(parent, X, gy, main.r);
-        BikeShelterAndBins(parent, X, gy, main.r, metal);
+        StreetFurniture(parent, X, gy, main.r);
     }
 
     /// Fenêtres au bout du couloir (façade est, étages 2 et 3), au-dessus de l'entrée.
@@ -182,32 +183,16 @@ public static partial class EchoesMapGenerator
     }
 
     /// Climatiseurs, extracteurs, réservoir d'eau et trappe d'accès sur un toit.
-    static void RoofEquipment(Transform p, Rect r, float top, Material metal, bool big)
+    /// Climatiseurs et coffrets techniques sur un toit (modèles Poly Haven).
+    static void RoofEquipment(LevelDef R, Rect r, float top, bool big)
     {
-        var unit = Mat("Climatiseur", new Color(0.78f, 0.78f, 0.76f), 0.35f);
-        var grille = Mat("Climatiseur_Grille", new Color(0.12f, 0.12f, 0.13f), 0.3f);
-        int n = big ? 4 : 3;
+        int n = big ? 5 : 3;
         for (int k = 0; k < n; k++)
         {
-            var c = new Vector3(Mathf.Lerp(r.xMin + 4f, r.xMax - 4f, (k + 0.5f) / n), top, r.center.y + (k % 2 == 0 ? -2f : 1.5f));
-            Cube(p, "Climatiseur", c + Vector3.up * 0.55f, new Vector3(1.3f, 1.1f, 1.0f), Quaternion.identity, unit, false, -1);
-            Cylinder(p, "Ventilateur", c + Vector3.up * 1.11f, 0.42f, 0.03f, Quaternion.identity, grille, false);
+            var c = new Vector3(Mathf.Lerp(r.xMin + 4f, r.xMax - 4f, (k + 0.5f) / n), top, r.center.y + (k % 2 == 0 ? -2.2f : 1.8f));
+            CaveProp(R, "exterior_aircon_unit", c, k % 2 == 0 ? 0f : 180f, new Vector3(1.1f, 1.0f, 0.6f));
         }
-        for (int k = 0; k < (big ? 5 : 3); k++)
-        {
-            var c = new Vector3(Rand(r.xMin + 2f, r.xMax - 2f), top, Rand(r.yMin + 1.5f, r.yMax - 1.5f));
-            Cylinder(p, "Ventilation", c + Vector3.up * 0.45f, 0.12f, 0.9f, Quaternion.identity, metal, false);
-            Cylinder(p, "Chapeau_Ventilation", c + Vector3.up * 0.95f, 0.2f, 0.08f, Quaternion.identity, metal, false);
-        }
-        if (big)
-        {
-            var t = new Vector3(r.xMin + 6f, top, r.yMax - 3.5f);
-            Cylinder(p, "Reservoir", t + Vector3.up * 1.4f, 1.1f, 2.0f, Quaternion.identity, unit, false);
-            foreach (var d in new[] { new Vector3(-0.7f, 0, -0.7f), new Vector3(0.7f, 0, -0.7f), new Vector3(-0.7f, 0, 0.7f), new Vector3(0.7f, 0, 0.7f) })
-                Cube(p, "Reservoir_Pied", t + d + Vector3.up * 0.2f, new Vector3(0.1f, 0.4f, 0.1f), Quaternion.identity, metal, false, -1);
-            Cube(p, "Trappe_Toit", new Vector3(r.xMax - 5f, top + 0.12f, r.center.y), new Vector3(1.0f, 0.24f, 1.0f), Quaternion.identity, metal, false, -1);
-            Cylinder(p, "Antenne", new Vector3(r.xMax - 3f, top + 1.5f, r.yMin + 2f), 0.03f, 3f, Quaternion.identity, metal, false);
-        }
+        if (big) CaveProp(R, "utility_box_02", new Vector3(r.xMax - 5f, top, r.center.y), 90f, new Vector3(0.8f, 1.2f, 0.5f));
     }
 
     /// Entrée principale (façade est) : marquise sur poteaux, marches, enseigne, appliques, interphone, boîte aux lettres.
@@ -241,12 +226,13 @@ public static partial class EchoesMapGenerator
         foreach (var s in new[] { -1f, 1f })
         {
             var at = new Vector3(faceX + 0.1f, gy + 2.1f, zc + s * 1.55f);
-            Cube(p, "Applique", at, new Vector3(0.14f, 0.3f, 0.18f), Quaternion.identity, glow, false, -1);
+            var wl = new LevelDef { number = 1, y = gy, h = 4f, root = p, props = p };
+            var lantern = CaveProp(wl, "street_lamp_02", at + Vector3.down * 0.45f + Vector3.right * 0.05f, 90f, new Vector3(0.35f, 0.9f, 0.45f));
+            if (lantern == null) Cube(p, "Applique", at, new Vector3(0.14f, 0.3f, 0.18f), Quaternion.identity, glow, false, -1);
             var l = PointLight(X, at + Vector3.right * 0.3f, 6f, p);
             l.intensity = 1.2f;
         }
         Cube(p, "Interphone", new Vector3(faceX + 0.04f, gy + 1.35f, zc + ExitW * 0.5f + 0.45f), new Vector3(0.05f, 0.32f, 0.18f), Quaternion.identity, metal, false, -1);
-        Cube(p, "Boite_Aux_Lettres", new Vector3(faceX + 0.12f, gy + 1.1f, zc - 2.0f), new Vector3(0.22f, 0.4f, 0.45f), Quaternion.identity, Mat("Boite_Lettres", new Color(0.75f, 0.68f, 0.2f), 0.5f), false, -1);
         PlaqueBig(sign, "12", new Vector3(faceX + 0.02f, gy + 2.25f, zc + ExitW * 0.5f + 0.45f), Vector3.right, 0.03f, 0.35f, 0.3f);
     }
 
@@ -295,34 +281,32 @@ public static partial class EchoesMapGenerator
     }
 
     /// Abri à vélos (arceaux sous un toit) et local à conteneurs, près de l'angle sud-est.
-    static void BikeShelterAndBins(Transform p, LevelDef X, float gy, Rect main, Material metal)
+    /// Mobilier urbain autour de l'entrée : poubelles (dans le local en brique), sacs, borne incendie,
+    /// coffret électrique, regards, banquettes urbaines (modèles Poly Haven).
+    static void StreetFurniture(Transform p, LevelDef X, float gy, Rect main)
     {
-        var c = new Vector3(main.xMax + 4.5f, gy, main.yMin + 1.5f);
-        var roof = Mat("Marquise", new Color(0.14f, 0.15f, 0.17f), 0.5f);
-        Cube(p, "Abri_Velos_Toit", c + Vector3.up * 2.2f, new Vector3(4.2f, 0.08f, 2.0f), Quaternion.Euler(4f, 0f, 0f), roof, false, -1);
-        foreach (var dx in new[] { -2f, 2f })
-            foreach (var dz in new[] { -0.9f, 0.9f })
-                Cylinder(p, "Abri_Velos_Poteau", c + new Vector3(dx, 1.1f, dz), 0.05f, 2.2f, Quaternion.identity, metal, true);
-        for (int k = 0; k < 5; k++) // arceaux
-        {
-            var a = c + new Vector3(-1.6f + k * 0.8f, 0f, 0f);
-            Cylinder(p, "Arceau", a + new Vector3(0f, 0.4f, -0.3f), 0.025f, 0.8f, Quaternion.identity, metal, false);
-            Cylinder(p, "Arceau", a + new Vector3(0f, 0.4f, 0.3f), 0.025f, 0.8f, Quaternion.identity, metal, false);
-            Cylinder(p, "Arceau", a + new Vector3(0f, 0.8f, 0f), 0.025f, 0.6f, Quaternion.Euler(90f, 0f, 0f), metal, false);
-        }
-        // Local à conteneurs : muret en brique et trois poubelles
+        // Local à poubelles : muret en brique, poubelles métalliques et sacs
         var bc = new Vector3(main.xMax + 4.5f, gy, main.yMax - 1.5f);
         var brick = Mat("Facade_Brique", Color.white);
         Cube(p, "Muret_Poubelles", bc + new Vector3(0f, 0.65f, 1.0f), new Vector3(3.6f, 1.3f, 0.2f), Quaternion.identity, brick, true, _layerWalls);
         Cube(p, "Muret_Poubelles", bc + new Vector3(1.8f, 0.65f, 0f), new Vector3(0.2f, 1.3f, 2.0f), Quaternion.identity, brick, true, _layerWalls);
         Cube(p, "Muret_Poubelles", bc + new Vector3(-1.8f, 0.65f, 0f), new Vector3(0.2f, 1.3f, 2.0f), Quaternion.identity, brick, true, _layerWalls);
-        var bin = Mat("Conteneur", new Color(0.15f, 0.32f, 0.2f), 0.35f);
-        var lid = Mat("Conteneur_Couvercle", new Color(0.1f, 0.22f, 0.14f), 0.35f);
         for (int k = 0; k < 3; k++)
+            Model(X, KFurniture + "trashcan", bc + new Vector3(-1.1f + k * 1.1f, 0f, 0.4f), Rand(0f, 360f), new Vector3(0.7f, 1.05f, 0.7f), brick);
+        foreach (var dx in new[] { -1.45f, 1.45f })
+            CaveProp(X, "trashbag", bc + new Vector3(dx, 0f, 0.55f), Rand(0f, 360f), Vector3.one * Rand(0.6f, 0.75f));
+        // Borne incendie et coffret électrique près de l'entrée, regards sur l'allée
+        CaveProp(X, "fire_hydrant", new Vector3(main.xMax + 3.2f, gy, ExitZ + 3.2f), Rand(0f, 360f), new Vector3(0.5f, 0.85f, 0.5f), true);
+        CaveProp(X, "utility_box_02", new Vector3(main.xMax + 0.45f, gy, main.yMin + 2.5f), 90f, new Vector3(0.8f, 1.2f, 0.45f), true);
+        foreach (var x in new[] { main.xMax + 9f, main.xMax + 18f })
+            CaveProp(X, "water_manhole_cover", new Vector3(x, gy + 0.035f, ExitZ), 0f, new Vector3(0.7f, 0.04f, 0.7f));
+        // Bancs de part et d'autre de l'entrée, face à l'allée
+        foreach (var dz in new[] { -3.4f, 3.4f })
         {
-            var b = bc + new Vector3(-1.1f + k * 1.1f, 0f, 0.35f);
-            Cube(p, "Conteneur", b + Vector3.up * 0.55f, new Vector3(0.75f, 1.1f, 0.85f), Quaternion.Euler(0f, Rand(-6f, 6f), 0f), k == 1 ? Mat("Conteneur_Jaune", new Color(0.75f, 0.6f, 0.15f), 0.35f) : bin, true, _layerFurniture);
-            Cube(p, "Conteneur_Couvercle", b + Vector3.up * 1.12f, new Vector3(0.8f, 0.05f, 0.9f), Quaternion.Euler(0f, 0f, 0f), lid, false, -1);
+            float yaw = dz < 0 ? 0f : 180f;
+            var seat = Piece(X, MP("Chairs", "Chair40", "Chair39"), KGraveyard + "bench", new Vector3(main.xMax + 3.6f, gy, ExitZ + dz), yaw, F(1.7f, 0.9f, 0.65f, yaw), brick);
+            if (seat != null) AddSeat(seat, 0.45f, yaw, Vector3.zero, "S'asseoir sur le banc");
         }
     }
+
 }

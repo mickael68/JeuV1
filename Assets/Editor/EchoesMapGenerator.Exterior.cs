@@ -131,8 +131,6 @@ public static partial class EchoesMapGenerator
         Box(ext, "Allee", new Vector3(xE + 2.6f, gy, pz0), new Vector3(YardRect.xMax, gy + 0.03f, pz1), mPath, _layerGround);
         for (float x = xE + 7f; x < YardRect.xMax - 2f; x += 9f)
             StreetLamp(X, new Vector3(x, gy, pz1 + 0.6f));
-        AddSeat(Model(X, KGraveyard + "bench", new Vector3(xE + 11.5f, gy, pz0 - 0.9f), 0f, new Vector3(1.8f, 0.9f, 0.6f), mPath), 0.45f, 0f, Vector3.zero, "S'asseoir sur le banc");
-        AddSeat(Model(X, KGraveyard + "bench-damaged", new Vector3(xE + 20.5f, gy, pz1 + 0.9f), 180f, new Vector3(1.8f, 0.9f, 0.6f), mPath), 0.45f, 180f, Vector3.zero, "S'asseoir sur le banc");
 
         // 4) Clôture de la cour + portail fermé au bout de l'allée
         var mFence = Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f);
@@ -233,10 +231,19 @@ public static partial class EchoesMapGenerator
     /// Lampadaire : poteau, tête, lumière chaude.
     static void StreetLamp(LevelDef X, Vector3 foot)
     {
-        var m = Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f);
-        Cylinder(X.props, "Lampadaire", foot + Vector3.up * 1.75f, 0.06f, 3.5f, Quaternion.identity, m, true);
-        Cube(X.props, "Lampadaire_Tete", foot + Vector3.up * 3.55f, new Vector3(0.35f, 0.12f, 0.35f), Quaternion.identity, Mat("Lampe_Allumee", new Color(1f, 0.85f, 0.6f), 0.8f), false, -1);
-        var l = PointLight(X, foot + Vector3.up * 3.3f, 11f, X.props);
+        // Lampadaire de parc en fonte (Poly Haven) ; la lumière est placée dans la lanterne
+        var lamp = CaveProp(X, "street_lamp_01", foot, Rand(0f, 360f), new Vector3(0.7f, 3.8f, 0.7f));
+        float top = foot.y + 3.3f;
+        if (lamp != null)
+        {
+            if (TryBounds(lamp, out var b)) top = b.max.y - 0.45f;
+            var cc = lamp.AddComponent<CapsuleCollider>();
+            cc.radius = 0.12f / Mathf.Max(0.01f, lamp.transform.lossyScale.x);
+            cc.height = 3.5f / Mathf.Max(0.01f, lamp.transform.lossyScale.y);
+            cc.center = lamp.transform.InverseTransformPoint(foot + Vector3.up * 1.75f);
+        }
+        else Cylinder(X.props, "Lampadaire", foot + Vector3.up * 1.75f, 0.06f, 3.5f, Quaternion.identity, Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f), true);
+        var l = PointLight(X, new Vector3(foot.x, top, foot.z), 11f, X.props);
         l.intensity = 2.5f;
     }
 

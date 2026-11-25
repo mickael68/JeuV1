@@ -579,6 +579,7 @@ public static partial class EchoesMapGenerator
             return Cube(L.props, Path.GetFileName(path), floorPos + Vector3.up * fit.y * 0.5f, fit, Quaternion.Euler(0, rotY, 0), fallback, collider, _layerFurniture);
 
         var go = (GameObject)PrefabUtility.InstantiatePrefab(asset, L.props);
+        StripVariants(go);
         // Garde la rotation d'origine du modèle (les FBX venant de Blender sont souvent tournés de -90° en X)
         var baseRot = asset.transform.localRotation;
         go.transform.SetPositionAndRotation(Vector3.zero, baseRot);
@@ -615,6 +616,27 @@ public static partial class EchoesMapGenerator
         }
         SetLayerRecursive(go, _layerFurniture);
         return go;
+    }
+
+    /// Les FBX Poly Haven contiennent souvent plusieurs variantes côte à côte (neuve / rouillée / vieillie) :
+    /// on n'en garde qu'une, sinon l'objet est mis à l'échelle sur l'ensemble et paraît minuscule.
+    static void StripVariants(GameObject go)
+    {
+        var parts = go.GetComponentsInChildren<Renderer>(true);
+        bool hasPlain = false, hasVariant = false;
+        foreach (var r in parts)
+        {
+            string n = r.name.ToLowerInvariant();
+            if (n.Contains("_rust") || n.Contains("_aged")) hasVariant = true; else hasPlain = true;
+        }
+        if (!(hasPlain && hasVariant)) return;
+        if (PrefabUtility.IsPartOfPrefabInstance(go)) PrefabUtility.UnpackPrefabInstance(go, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+        foreach (var r in parts)
+        {
+            if (r == null) continue; // déjà détruit avec son parent
+            string n = r.name.ToLowerInvariant();
+            if (n.Contains("_rust") || n.Contains("_aged")) Object.DestroyImmediate(r.gameObject);
+        }
     }
 
     // Repose l'objet pour que le bas de ses bounds soit sur floorPos (centré en x/z).

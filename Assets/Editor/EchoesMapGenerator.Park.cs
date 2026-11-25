@@ -112,6 +112,7 @@ public static partial class EchoesMapGenerator
         BuildPicnic(root, P, gy);
 
         // 5) Végétation : haies, massifs fleuris, arbres
+        FrontGarden(root, P, gy);
         int trees = PlantPark(root, P, gy);
 
         // Vues de contrôle
@@ -226,28 +227,105 @@ public static partial class EchoesMapGenerator
         var r = PicnicRect;
         Box(root, "Aire_Pique_Nique", new Vector3(r.xMin, gy, r.yMin), new Vector3(r.xMax, gy + 0.03f, r.yMax), Mat("Parc_Gravier", Color.white), _layerGround);
         var wood = Mat("Ponton_Bois", new Color(0.5f, 0.4f, 0.3f));
-        var canvas = new[] { Mat("Parasol_Rouge", new Color(0.65f, 0.15f, 0.12f), 0.2f), Mat("Parasol_Creme", new Color(0.85f, 0.8f, 0.68f), 0.2f) };
-        int k = 0;
         foreach (var cz in new[] { r.yMin + 3.2f, r.yMax - 3.2f })
             foreach (var cx in new[] { r.xMin + 3.5f, r.center.x, r.xMax - 3.5f })
             {
                 var c = new Vector3(cx + Rand(-0.3f, 0.3f), gy, cz + Rand(-0.3f, 0.3f));
-                Piece(P, MP("Tables", "Table46", "Table45"), KFurniture + "table", c, 0f, F(1.9f, 0.76f, 0.85f, 0f), wood);
-                foreach (var s in new[] { -1f, 1f })
-                {
-                    var b = Piece(P, MP("Chairs", "Chair39"), KGraveyard + "bench", c + new Vector3(0f, 0f, s * 0.95f), s < 0 ? 0f : 180f, F(1.8f, 0.85f, 0.55f, 0f), wood);
-                    if (b != null) AddSeat(b, 0.45f, s < 0 ? 0f : 180f, Vector3.zero, "S'asseoir à la table");
-                }
-                // Parasol
-                Cylinder(root, "Parasol_Mat", c + Vector3.up * 1.2f, 0.03f, 2.4f, Quaternion.identity, Mat("Grille_Metal", new Color(0.18f, 0.18f, 0.2f), 0.5f), false);
-                var top = Cylinder(root, "Parasol_Toile", c + Vector3.up * 2.35f, 1.3f, 0.08f, Quaternion.identity, canvas[k++ % 2], false);
-                top.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+                var t = CaveProp(P, "wooden_picnic_table", c, Rand(-8f, 8f), F(2.0f, 0.8f, 1.7f, 0f), true);
+                if (t != null) AddSeat(t, 0.45f, 0f, new Vector3(0f, 0f, -0.6f), "S'asseoir à la table");
             }
         Model(P, KFurniture + "trashcan", new Vector3(r.xMax - 0.6f, gy, r.center.y), 0f, new Vector3(0.45f, 0.8f, 0.45f), wood);
         Model(P, KFurniture + "trashcan", new Vector3(r.xMin + 0.6f, gy, r.center.y), 0f, new Vector3(0.45f, 0.8f, 0.45f), wood);
         CaveProp(P, "stone_fire_pit", new Vector3(r.xMin - 2.5f, gy, r.center.y), 0f, new Vector3(1.4f, 0.4f, 1.4f), true); // barbecue en pierre
         StreetLamp(P, new Vector3(r.center.x - 4f, gy, r.center.y));
         StreetLamp(P, new Vector3(r.center.x + 4f, gy, r.center.y));
+    }
+
+    // ───────────────────────── Jardin d'entrée ─────────────────────────
+
+    /// Devant la résidence (entre la façade est et le portail) : allée bordée d'arbres et de plates-bandes fleuries,
+    /// bacs à fleurs de part et d'autre de l'entrée, bancs face à face, deux pelouses avec massif central et arbustes.
+    static void FrontGarden(Transform root, LevelDef P, float gy)
+    {
+        float x0 = HalfX + 6f, x1 = YardRect.xMax - 3f;
+        var soil = Mat("Massif_Terre", new Color(0.3f, 0.24f, 0.18f));
+        var stone = Mat("Facade_Bandeau", new Color(0.82f, 0.8f, 0.75f));
+        bool hasBush = AssetDatabase.LoadAssetAtPath<GameObject>(BushSmall) != null;
+        bool hasFlower = AssetDatabase.LoadAssetAtPath<GameObject>(Foliage + "dandelion.prefab") != null;
+        string[] trees = { Foliage + "maple.prefab", Foliage + "lucious tree.prefab", Foliage + "apple.prefab" };
+        bool LoopCross(float x) => Mathf.Abs(x - LoopX1) < PathW + 1.5f;
+
+        // Plates-bandes fleuries le long de l'allée, avec arbres d'alignement entre elles
+        foreach (var side in new[] { -1f, 1f })
+        {
+            float zc = ExitZ + side * 2.4f;
+            for (float x = x0; x < x1 - 3f; x += 6f)
+            {
+                if (LoopCross(x + 1.5f) || LoopCross(x)) continue;
+                var c = new Vector3(x + 1.5f, gy + 0.06f, zc);
+                Cube(root, "Plate_Bande", c, new Vector3(3.6f, 0.12f, 0.9f), Quaternion.identity, soil, false, -1);
+                Cube(root, "Bordure_Plate_Bande", c + new Vector3(0f, -0.01f, side * -0.47f), new Vector3(3.6f, 0.14f, 0.06f), Quaternion.identity, stone, false, -1);
+                for (int k = 0; k < 7; k++)
+                {
+                    var f = c + new Vector3(Rand(-1.6f, 1.6f), 0.05f, Rand(-0.3f, 0.3f));
+                    if (k < 2 && hasBush) SetupRealTree(InstantiateAt(P, BushSmall, f, Rand(0f, 360f), Vector3.one * Rand(0.6f, 0.85f)), false);
+                    else if (hasFlower) SetupRealTree(InstantiateAt(P, Foliage + "dandelion.prefab", f, Rand(0f, 360f), Vector3.one * Rand(0.3f, 0.45f)), false);
+                }
+                // Arbre d'alignement entre deux plates-bandes, en retrait de l'allée
+                var tp = new Vector3(x + 4.5f, gy, ExitZ + side * 3.6f);
+                if (!LoopCross(tp.x) && tp.x < x1 - 1f)
+                {
+                    float h = Rand(7f, 9.5f);
+                    var t = InstantiateAt(P, trees[(int)(x / 6f) % trees.Length], tp, Rand(0f, 360f), new Vector3(h * 0.7f, h, h * 0.7f));
+                    SetupRealTree(t, true);
+                }
+            }
+            _parkBusy.Add(Rect.MinMaxRect(x0 - 1f, Mathf.Min(ExitZ + side * 1.8f, ExitZ + side * 4.6f), x1, Mathf.Max(ExitZ + side * 1.8f, ExitZ + side * 4.6f)));
+        }
+
+        // Bacs à fleurs en bois de part et d'autre du perron
+        foreach (var dz in new[] { -2.2f, 2.2f })
+            foreach (var dx in new[] { 3.2f, 5.0f })
+            {
+                var pos = new Vector3(HalfX + dx, gy, ExitZ + dz);
+                var box = CaveProp(P, "planter_box_02", pos, 0f, new Vector3(1.1f, 0.6f, 0.6f), true);
+                if (box != null && hasBush && TryBounds(box, out var bb))
+                    SetupRealTree(InstantiateAt(P, BushSmall, new Vector3(pos.x, bb.max.y - 0.1f, pos.z), Rand(0f, 360f), Vector3.one * 0.7f), false);
+            }
+
+        // Deux pelouses de part et d'autre de l'allée : massif rond central, bancs face au massif, arbustes et grands arbres
+        foreach (var (za, zb) in new[] { (LoopZ0 + PathW, ExitZ - 5f), (ExitZ + 5f, LoopZ1 - PathW) })
+        {
+            float cx = (HalfX + 3f + LoopX1 - PathW * 0.5f - 1f) * 0.5f, cz = (za + zb) * 0.5f;
+            if (zb - za < 4f) continue;
+            float rad = Mathf.Min(2.2f, (zb - za) * 0.35f);
+            Cylinder(root, "Massif_Rond", new Vector3(cx, gy + 0.05f, cz), rad, 0.1f, Quaternion.identity, soil, false);
+            Cylinder(root, "Bordure_Massif", new Vector3(cx, gy + 0.04f, cz), rad + 0.12f, 0.08f, Quaternion.identity, stone, false);
+            for (int k = 0; k < 18; k++)
+            {
+                float a = Rand(0f, Mathf.PI * 2f), d = Mathf.Sqrt(Rand(0f, 1f)) * (rad - 0.25f);
+                var f = new Vector3(cx + Mathf.Cos(a) * d, gy + 0.1f, cz + Mathf.Sin(a) * d);
+                if (k < 4 && hasBush) SetupRealTree(InstantiateAt(P, BushSmall, f, Rand(0f, 360f), Vector3.one * Rand(0.7f, 1f)), false);
+                else if (hasFlower) SetupRealTree(InstantiateAt(P, Foliage + "dandelion.prefab", f, Rand(0f, 360f), Vector3.one * Rand(0.3f, 0.5f)), false);
+            }
+            foreach (var s in new[] { -1f, 1f })
+            {
+                float yaw = s < 0 ? 90f : -90f;
+                var b = Piece(P, MP("Chairs", "Chair40", "Chair39"), KGraveyard + "bench", new Vector3(cx + s * (rad + 1.6f), gy, cz), yaw, F(1.7f, 0.9f, 0.65f, yaw), stone);
+                if (b != null) AddSeat(b, 0.45f, yaw, Vector3.zero, "S'asseoir sur le banc");
+            }
+            _parkBusy.Add(Rect.MinMaxRect(cx - rad - 2.6f, cz - rad - 0.8f, cx + rad + 2.6f, cz + rad + 0.8f));
+            // Grands arbres aux coins de la pelouse et arbustes le long de la façade
+            foreach (var (tx, tz) in new[] { (HalfX + 4.5f, za + 1.2f), (HalfX + 4.5f, zb - 1.2f), (LoopX1 - PathW - 2f, za + 1.2f), (LoopX1 - PathW - 2f, zb - 1.2f) })
+            {
+                var tp = new Vector2(tx, tz);
+                if (!ParkFree(tp, 1.2f)) continue;
+                float h = Rand(8f, 11f);
+                SetupRealTree(InstantiateAt(P, trees[_rng.Next(trees.Length)], new Vector3(tx, gy, tz), Rand(0f, 360f), new Vector3(h * 0.75f, h, h * 0.75f)), true);
+                _parkBusy.Add(new Rect(tx - 1.5f, tz - 1.5f, 3f, 3f));
+            }
+        }
+        StreetLamp(P, new Vector3(HalfX + 6.5f, gy, ExitZ - 1.6f));
     }
 
     // ───────────────────────── Végétation ─────────────────────────

@@ -147,6 +147,7 @@ public static partial class EchoesMapGenerator
         if (asset == null) return null;
         if (!_realisticPrepared) { PolyHavenModels.PrepareAll(false); FixFoliageMaterials(); _realisticPrepared = true; }
         var go = (GameObject)PrefabUtility.InstantiatePrefab(asset, L.props);
+        StripVariants(go);
         go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, rotY, 0f) * asset.transform.localRotation);
         go.transform.localScale = Vector3.one;
         if (!TryBounds(go, out var b)) return go;
