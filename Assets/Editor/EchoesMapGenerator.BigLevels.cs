@@ -200,7 +200,7 @@ public static partial class EchoesMapGenerator
         // 9) Couloirs : tuyaux au plafond (-2), encombrement, lumières (néons fatigués et défaillants)
         var metal = Mat("Metal_" + L.number, new Color(0.35f, 0.33f, 0.3f));
         string[] clutter = technical
-            ? new[] { KSurvival + "barrel", KSurvival + "box-large", KSurvival + "box", KFurniture + "cardboardBoxClosed" }
+            ? new[] { KSurvival + "barrel", KSurvival + "box-large", KSurvival + "box", KFurniture + "cardboardBoxClosed", "ph:Barrel_01", "ph:metal_jerrycan", "ph:propane_tank" }
             : new[] { KFurniture + "cardboardBoxClosed", KFurniture + "cardboardBoxOpen", KFurniture + "trashcan", KSurvival + "box", KFurniture + "chair" };
         var lights = new List<Vector2Int>();
         for (int i = 0; i < MazeNX; i++)
@@ -214,7 +214,13 @@ public static partial class EchoesMapGenerator
                 {
                     var off = new Vector3(Rand(-1.3f, 1.3f), 0, Rand(-1.3f, 1.3f));
                     if (_rng.NextDouble() < 0.4) ScatterBoxes(L, new Rect(c.x + off.x - 0.6f, c.z + off.z - 0.6f, 1.2f, 1.2f), _rng.Next(1, 3));
-                    else Model(L, clutter[_rng.Next(clutter.Length)], c + off, Rand(0, 360), new Vector3(0.8f, 1f, 0.8f), mp);
+                    else
+                    {
+                        string pick = clutter[_rng.Next(clutter.Length)];
+                        if (pick.StartsWith("ph:"))
+                            CaveProp(L, pick.Substring(3), c + off, Rand(0, 360), new Vector3(2f, pick.Contains("jerrycan") ? 0.45f : pick.Contains("propane") ? 1.2f : 0.9f, 2f), true);
+                        else Model(L, pick, c + off, Rand(0, 360), new Vector3(0.8f, 1f, 0.8f), mp);
+                    }
                 }
                 bool far = true;
                 foreach (var o in lights) if (Mathf.Abs(o.x - i) + Mathf.Abs(o.y - j) < 3) { far = false; break; }
@@ -391,29 +397,53 @@ public static partial class EchoesMapGenerator
                 for (float d = 1.6f; d < D - 2f; d += 2.1f)
                     Model(L, KFurniture + "bookcaseOpen", P(0.3f, d), yawR, new Vector3(0.5f, 2.2f, 2f), mp);
                 ScatterBoxes(L, new Rect(P(W * 0.5f, D * 0.5f).x - 1.2f, P(W * 0.5f, D * 0.5f).z - 1.2f, 2.4f, 2.4f), _rng.Next(3, 6));
+                if (nr.type == RoomType.Reserve)
+                {
+                    CaveProp(L, "Barrel_01", P(W - 0.6f, D - 0.6f), Rand(0f, 360f), new Vector3(2f, 0.9f, 2f), true);
+                    CaveProp(L, "Barrel_02", P(W - 1.4f, D - 0.6f), Rand(0f, 360f), new Vector3(2f, 0.9f, 2f), true);
+                    CaveProp(L, "metal_jerrycan", P(W - 0.5f, D - 1.5f), Rand(0f, 360f), new Vector3(2f, 0.45f, 2f), true);
+                }
                 break;
 
             case RoomType.Chaufferie:
             {
-                float n = Mathf.Max(1, Mathf.Floor((W - 1f) / 2.8f));
+                // Salle des groupes électrogènes : rangée de groupes contre le mur du fond, câbles et tuyaux vers le plafond,
+                // réserve de carburant (bouteilles, fûts, jerricans) contre les murs latéraux
+                float n = Mathf.Max(1, Mathf.Floor((W - 1f) / 1.9f));
                 for (int k = 0; k < n; k++)
-                    Cylinder(L.props, "Chaudiere", P(1.5f + k * 2.8f, 1.5f) + Vector3.up * 1.5f, 1.1f, 3f, Quaternion.identity, metal, true);
-                Cylinder(L.props, "Tuyau", P(W * 0.5f, 2.8f) + Vector3.up * (L.h - 0.6f), 0.18f, W - 0.4f, Quaternion.Euler(0, yawF + 90f, 90), metal, false);
-                if (!_generatorMarked) { Marker(L, "Generateur_Panne", P(W * 0.5f, D - 1.5f), Color.yellow); _generatorMarked = true; }
-                Model(L, KSurvival + "barrel", P(W - 0.6f, D - 0.9f), 0f, new Vector3(0.8f, 1.1f, 0.8f), mp);
+                {
+                    var gp = P(1.1f + k * 1.9f, 0.9f);
+                    var gen = CaveProp(L, "portable_generator", gp, yawF + 180f + Rand(-4f, 4f), new Vector3(3f, 0.8f, 3f), true);
+                    if (gen != null && TryBounds(gen, out var gb))
+                        Pipe(L.props, new Vector3(gb.center.x, (gb.max.y + L.y + L.h) * 0.5f, gb.center.z) + f * 0.25f, Vector3.up, L.y + L.h - gb.max.y, 0.05f, metal, PipeStyle.Metal);
+                }
+                Cylinder(L.props, "Tuyau", P(W * 0.5f, 0.9f) + f * 0.25f + Vector3.up * (L.h - 0.35f), 0.12f, W - 0.4f, Quaternion.Euler(0, yawF + 90f, 90), metal, false);
+                if (!_generatorMarked) { Marker(L, "Generateur_Panne", P(W * 0.5f, 2f), Color.yellow); _generatorMarked = true; }
+                for (float d = 2.3f; d < D - 0.5f; d += 1.1f)
+                {
+                    CaveProp(L, _rng.NextDouble() < 0.5 ? "propane_tank" : "Barrel_01", P(0.45f, d), Rand(0f, 360f), new Vector3(2f, _rng.NextDouble() < 0.5 ? 1.2f : 0.9f, 2f), true);
+                    if (_rng.NextDouble() < 0.6) CaveProp(L, "metal_jerrycan", P(W - 0.4f, d), Rand(0f, 360f), new Vector3(2f, 0.45f, 2f), true);
+                }
+                CaveProp(L, "small_lpg_tank", P(W - 0.5f, D - 0.6f), Rand(0f, 360f), new Vector3(2f, 0.6f, 2f), true);
                 break;
             }
 
             case RoomType.Electrique:
-                for (float u = 0.6f; u < W - 0.4f; u += 1.1f)
-                    Prop(L, "Armoire_Electrique", P(u, 0.25f) + Vector3.up * 1f, new Vector3(1f, 2f, 0.4f), metal, yawF);
+                for (float u = 0.8f; u < W - 0.6f; u += 1.4f)
+                    CaveProp(L, "utility_box_01", P(u, 0.3f), yawF, new Vector3(1.2f, 1.8f, 1.2f), true);
                 Model(L, KSurvival + "metal-panel-screws", P(W - 0.2f, D * 0.5f), yawL, new Vector3(0.2f, 2.2f, 1.6f), metal);
                 break;
 
             case RoomType.Pompes:
                 for (float u = 1.2f; u < W - 0.8f; u += 2.4f)
                     for (float d = 1.4f; d < D - 1.5f; d += 2.6f)
-                        Cylinder(L.props, "Pompe", P(u, d) + Vector3.up * 0.6f, 0.5f, 1.2f, Quaternion.Euler(0, 0, 90), metal, true);
+                    {
+                        var pump = CaveProp(L, "old_military_compressor", P(u, d), yawR + Rand(-5f, 5f), new Vector3(3f, 1.1f, 3f), true);
+                        if (pump != null && TryBounds(pump, out var pb)) // tuyau qui part de la cuve vers le plafond
+                            Pipe(L.props, new Vector3(pb.center.x, (pb.max.y + L.y + L.h) * 0.5f, pb.center.z), Vector3.up, L.y + L.h - pb.max.y, 0.07f, metal, PipeStyle.Metal);
+                    }
+                CaveProp(L, "tire_pump", P(W - 0.5f, D - 0.6f), Rand(0f, 360f), new Vector3(1f, 0.6f, 1f));
+                CaveProp(L, "Barrel_02", P(0.5f, D - 0.6f), Rand(0f, 360f), new Vector3(2f, 0.9f, 2f), true);
                 break;
 
             case RoomType.Atelier:
@@ -421,6 +451,9 @@ public static partial class EchoesMapGenerator
                 Model(L, KSurvival + "tool-shovel", P(0.3f, 1.5f), yawR, new Vector3(0.3f, 1.2f, 0.3f), mp, false);
                 Model(L, KSurvival + "bucket", P(W - 0.5f, 1.2f), 0f, new Vector3(0.4f, 0.4f, 0.4f), mp);
                 ScatterBoxes(L, new Rect(P(W * 0.5f, D - 1.5f).x - 0.8f, P(W * 0.5f, D - 1.5f).z - 0.8f, 1.6f, 1.6f), 2);
+                CaveProp(L, "portable_welding_cart", P(W - 0.7f, D * 0.5f), yawL, new Vector3(2f, 1.3f, 2f), true);
+                CaveProp(L, "metal_jerrycan_green", P(0.5f, D - 0.5f), Rand(0f, 360f), new Vector3(2f, 0.45f, 2f), true);
+                CaveProp(L, "Barrel_01", P(W - 0.6f, D - 0.6f), Rand(0f, 360f), new Vector3(2f, 0.9f, 2f), true);
                 break;
         }
 

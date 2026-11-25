@@ -118,9 +118,15 @@ public static partial class EchoesMapGenerator
                     else if (roll < 0.17) { BrokenPipe(L, parent, c, pipeMat); leaks++; }
                     else if (roll < 0.33) { Puddle(parent, Spot(1.3f), Rand(0.5f, 1.3f)); puddles++; }
                     if (_rng.NextDouble() < 0.12) Debris(parent, Spot(1.4f), Mat("Mur_" + L.number, L.wall));
-                    if (_rng.NextDouble() < 0.09) HangingCable(parent, c, L.h, thinMat);
+                    double cr = _rng.NextDouble();
+                    if (cr < 0.45) CableBundle(parent, c, L.h, _rng.Next(1, 4));          // câbles qui pendent en guirlande
+                    if (_rng.NextDouble() < 0.3) DanglingCable(parent, c, L.h);           // câble arraché qui pend dans le vide
                 }
-                else if (_rng.NextDouble() < 0.06) { Puddle(parent, Spot(1.3f), Rand(0.4f, 0.9f)); puddles++; }
+                else
+                {
+                    if (_rng.NextDouble() < 0.06) { Puddle(parent, Spot(1.3f), Rand(0.4f, 0.9f)); puddles++; }
+                    if (_rng.NextDouble() < 0.15) CableBundle(parent, c, L.h, _rng.Next(1, 3));
+                }
             }
 
         // Vue de contrôle : le plus long couloir droit du niveau
@@ -398,20 +404,66 @@ public static partial class EchoesMapGenerator
     }
 
     /// Câble électrique qui pend entre deux points du plafond.
-    static void HangingCable(Transform p, Vector3 c, float h, Material m)
+    static Material[] _cableMats;
+    static Material CableMat()
+    {
+        if (_cableMats == null || _cableMats[0] == null)
+            _cableMats = new[] { Mat("Cable_Noir", new Color(0.04f, 0.04f, 0.045f), 0.35f), Mat("Cable_Gris", new Color(0.25f, 0.25f, 0.26f), 0.3f),
+                                 Mat("Cable_Rouge", new Color(0.35f, 0.06f, 0.05f), 0.35f), Mat("Cable_Jaune", new Color(0.55f, 0.45f, 0.1f), 0.3f) };
+        return _cableMats[_rng.NextDouble() < 0.6 ? 0 : _rng.Next(1, _cableMats.Length)];
+    }
+
+    /// Courbe de câble (cylindres bout à bout) passant par les points donnés.
+    static void CablePath(Transform p, List<Vector3> pts, float radius, Material m)
+    {
+        for (int k = 0; k < pts.Count - 1; k++)
+        {
+            var u = pts[k]; var v = pts[k + 1];
+            var go = Cylinder(p, "Cable", (u + v) * 0.5f, radius, Vector3.Distance(u, v) + radius, Quaternion.FromToRotation(Vector3.up, (v - u).normalized), m, false);
+            go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+    }
+
+    /// 1 à 3 câbles accrochés au plafond, qui pendent en guirlande (décalés pour ne pas toucher la lampe au centre).
+    static void CableBundle(Transform p, Vector3 c, float h, int count)
     {
         float yaw = Rand(0f, 180f);
         var dir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
-        var a = c + Vector3.up * (h - 0.1f) - dir * 1.3f;
-        var b = c + Vector3.up * (h - 0.1f) + dir * 1.3f;
-        float sag = Rand(0.5f, 1.1f);
-        const int segs = 8;
-        Vector3 Pt(int k) { float t = k / (float)segs; return Vector3.Lerp(a, b, t) + Vector3.down * (4f * sag * t * (1f - t)); }
-        for (int k = 0; k < segs; k++)
+        var side = Vector3.Cross(Vector3.up, dir);
+        var center = c + side * Rand(0.6f, 1.1f) * (_rng.NextDouble() < 0.5 ? -1f : 1f);
+        for (int n = 0; n < count; n++)
         {
-            var u = Pt(k); var v = Pt(k + 1);
-            var go = Cylinder(p, "Cable", (u + v) * 0.5f, 0.012f, Vector3.Distance(u, v) + 0.01f, Quaternion.FromToRotation(Vector3.up, (v - u).normalized), m, false);
-            go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            float span = Rand(1.4f, 2.6f), sag = Rand(0.35f, 1.2f), r = Rand(0.012f, 0.024f);
+            var off = side * (n * 0.07f) + dir * Rand(-0.3f, 0.3f);
+            var a = center + off + Vector3.up * (h - 0.05f) - dir * span * 0.5f;
+            var b = center + off + Vector3.up * (h - 0.05f) + dir * span * 0.5f;
+            var pts = new List<Vector3>();
+            const int segs = 10;
+            for (int k = 0; k <= segs; k++) { float t = k / (float)segs; pts.Add(Vector3.Lerp(a, b, t) + Vector3.down * (4f * sag * t * (1f - t))); }
+            CablePath(p, pts, r, CableMat());
         }
+    }
+
+    /// Câble arraché : il descend du plafond et pend dans le vide, le bout dénudé recourbé.
+    static void DanglingCable(Transform p, Vector3 c, float h)
+    {
+        var top = c + new Vector3(Rand(-1.3f, 1.3f), h - 0.02f, Rand(-1.3f, 1.3f));
+        if (new Vector2(top.x - c.x, top.z - c.z).magnitude < 0.6f) top += new Vector3(0.7f, 0f, 0f); // loin de la lampe
+        float len = Rand(0.9f, 2.1f);
+        var drift = Quaternion.Euler(0f, Rand(0f, 360f), 0f) * Vector3.forward * Rand(0.1f, 0.35f);
+        var pts = new List<Vector3>();
+        const int segs = 8;
+        for (int k = 0; k <= segs; k++)
+        {
+            float t = k / (float)segs;
+            pts.Add(top + Vector3.down * (len * t) + drift * (t * t) + Vector3.Cross(Vector3.up, drift).normalized * (Mathf.Sin(t * 5f) * 0.03f));
+        }
+        var end = pts[pts.Count - 1];
+        pts.Add(end + drift.normalized * 0.12f + Vector3.up * 0.06f);   // bout recourbé
+        CablePath(p, pts, Rand(0.014f, 0.022f), CableMat());
+        var copper = Mat("Cuivre", new Color(0.75f, 0.42f, 0.2f), 0.7f);
+        copper.SetFloat("_Metallic", 1f);
+        var tip = pts[pts.Count - 1];
+        Cylinder(p, "Cable_Denude", tip + drift.normalized * 0.03f, 0.006f, 0.06f, Quaternion.FromToRotation(Vector3.up, drift.normalized), copper, false);
     }
 }
