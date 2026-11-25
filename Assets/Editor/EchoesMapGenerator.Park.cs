@@ -164,20 +164,51 @@ public static partial class EchoesMapGenerator
         go.AddComponent<MeshFilter>().sharedMesh = mesh;
         go.AddComponent<MeshRenderer>().sharedMaterial = Mat("Lac_Berge", new Color(0.32f, 0.27f, 0.2f));
         go.AddComponent<MeshCollider>().sharedMesh = mesh;
-        // Pelouse autour (dans le trou rectangulaire) : fines bandes qui épousent l'ellipse et recouvrent un peu la berge
+        // Pelouse autour : un seul maillage lisse, de l'ellipse (un peu sur la berge) jusqu'au bord du trou rectangulaire
         var lawn = Mat("Exterieur_Herbe", Color.white);
-        const float band = 0.15f, E = 1.12f;
-        for (float z0 = r.yMin; z0 < r.yMax - 0.001f; z0 += band)
+        const float E = 1.12f;
+        const int LA = 160;
+        var lv = new List<Vector3>(); var luv = new List<Vector2>(); var lt = new List<int>();
+        for (int q = 0; q < LA; q++)
         {
-            float z1 = Mathf.Min(r.yMax, z0 + band);
-            float dz = Mathf.Min(Mathf.Abs(z0 - LakeC.y), Mathf.Abs(z1 - LakeC.y));
-            if (z0 < LakeC.y && z1 > LakeC.y) dz = 0f;
-            float q = dz / (E * LakeR.y);
-            if (q >= 1f) { Box(root, "Pelouse_Lac", new Vector3(r.xMin, gy - Slab, z0), new Vector3(r.xMax, gy, z1), lawn, _layerGround); continue; }
-            float hx = E * LakeR.x * Mathf.Sqrt(1f - q * q);
-            Box(root, "Pelouse_Lac", new Vector3(r.xMin, gy - Slab, z0), new Vector3(LakeC.x - hx, gy, z1), lawn, _layerGround);
-            Box(root, "Pelouse_Lac", new Vector3(LakeC.x + hx, gy - Slab, z0), new Vector3(r.xMax, gy, z1), lawn, _layerGround);
+            float a = q * Mathf.PI * 2f / LA, cx = Mathf.Cos(a), cz = Mathf.Sin(a);
+            var inner = new Vector3(LakeC.x + cx * LakeR.x * E, gy + 0.005f, LakeC.y + cz * LakeR.y * E);
+            // point du bord du rectangle dans la même direction
+            float tx = cx > 1e-4f ? (r.xMax - LakeC.x) / cx : cx < -1e-4f ? (r.xMin - LakeC.x) / cx : 1e6f;
+            float tz = cz > 1e-4f ? (r.yMax - LakeC.y) / cz : cz < -1e-4f ? (r.yMin - LakeC.y) / cz : 1e6f;
+            float t = Mathf.Min(tx, tz);
+            var outer = new Vector3(LakeC.x + cx * t, gy, LakeC.y + cz * t);
+            lv.Add(inner); lv.Add(outer);
+            luv.Add(new Vector2(inner.x, inner.z)); luv.Add(new Vector2(outer.x, outer.z));
         }
+        // coins du rectangle (rattachés au secteur le plus proche)
+        var corners = new[] { new Vector2(r.xMax, r.yMax), new Vector2(r.xMin, r.yMax), new Vector2(r.xMin, r.yMin), new Vector2(r.xMax, r.yMin) };
+        for (int q = 0; q < LA; q++)
+        {
+            int q2 = (q + 1) % LA;
+            int i0 = q * 2, o0 = i0 + 1, i1 = q2 * 2, o1 = i1 + 1;
+            lt.Add(i0); lt.Add(o0); lt.Add(i1); lt.Add(i1); lt.Add(o0); lt.Add(o1);
+        }
+        foreach (var c2 in corners)
+        {
+            float ca = Mathf.Atan2(c2.y - LakeC.y, c2.x - LakeC.x); if (ca < 0f) ca += Mathf.PI * 2f;
+            int q = Mathf.FloorToInt(ca / (Mathf.PI * 2f) * LA) % LA, q2 = (q + 1) % LA;
+            int ci = lv.Count; lv.Add(new Vector3(c2.x, gy, c2.y)); luv.Add(c2);
+            lt.Add(q * 2 + 1); lt.Add(ci); lt.Add(q2 * 2 + 1);
+        }
+        // Sens des triangles : face vers le haut (on corrige chaque triangle au besoin)
+        for (int i = 0; i < lt.Count; i += 3)
+            if (Vector3.Cross(lv[lt[i + 1]] - lv[lt[i]], lv[lt[i + 2]] - lv[lt[i]]).y < 0f) (lt[i + 1], lt[i + 2]) = (lt[i + 2], lt[i + 1]);
+        var lm = new Mesh { name = "Pelouse_Lac" };
+        lm.SetVertices(lv); lm.SetUVs(0, luv); lm.SetTriangles(lt, 0);
+        lm.RecalculateNormals(); lm.RecalculateBounds(); lm.RecalculateTangents();
+        AssetDatabase.AddObjectToAsset(lm, _boxContainer);
+        var lgo = new GameObject("Pelouse_Lac");
+        lgo.transform.SetParent(root, false);
+        lgo.AddComponent<MeshFilter>().sharedMesh = lm;
+        lgo.AddComponent<MeshRenderer>().sharedMaterial = lawn;
+        lgo.AddComponent<MeshCollider>().sharedMesh = lm;
+        lgo.layer = _layerGround;
         go.layer = _layerGround;
 
         // Eau
@@ -191,21 +222,23 @@ public static partial class EchoesMapGenerator
 
         // Pierres et roseaux sur la berge, ponton en bois au nord
         int n = 44;
+        Physics.SyncTransforms(); // les collisions de la berge viennent d'être créées : on pose tout sur le vrai sol
         for (int s = 0; s < n; s++)
         {
             float a = s * Mathf.PI * 2f / n + Rand(-0.08f, 0.08f);
-            float e = Rand(0.95f, 1.12f);
+            float e = Rand(0.92f, 1.08f);
             var p = new Vector3(LakeC.x + Mathf.Cos(a) * LakeR.x * e, gy, LakeC.y + Mathf.Sin(a) * LakeR.y * e);
+            if (Physics.Raycast(p + Vector3.up * 1f, Vector3.down, out var hit, 4f, 1 << _layerGround, QueryTriggerInteraction.Ignore)) p.y = hit.point.y;
             if (Mathf.Abs(p.x - LakeC.x) < 1.6f && p.z > LakeC.y) continue; // le ponton
             if (s % 2 == 0)
             {
                 float sc = Rand(0.5f, 1.1f);
-                Model(P, _rng.NextDouble() < 0.5 ? KSurvival + "rock-a" : KSurvival + "rock-b", p + Vector3.down * 0.15f, Rand(0f, 360f), new Vector3(sc, sc * 0.6f, sc), Mat("Lac_Berge", Color.gray), false);
+                Model(P, _rng.NextDouble() < 0.5 ? KSurvival + "rock-a" : KSurvival + "rock-b", p + Vector3.down * (0.18f * sc), Rand(0f, 360f), new Vector3(sc, sc * 0.6f, sc), Mat("Lac_Berge", Color.gray), false);
             }
             else if (AssetDatabase.LoadAssetAtPath<GameObject>(Foliage + "grass 1.prefab") != null)
             {
                 float sc = Rand(0.7f, 1.2f);
-                var reed = InstantiateAt(P, Foliage + "grass 1.prefab", p, Rand(0f, 360f), new Vector3(sc, sc * 1.2f, sc));
+                var reed = InstantiateAt(P, Foliage + "grass 1.prefab", p + Vector3.down * 0.03f, Rand(0f, 360f), new Vector3(sc, sc * 1.2f, sc));
                 SetupRealTree(reed, false);
             }
         }
