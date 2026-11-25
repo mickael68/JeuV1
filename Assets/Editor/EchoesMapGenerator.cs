@@ -76,6 +76,7 @@ public static partial class EchoesMapGenerator
         public Color wall, floor;
         public bool overrideAmbience = true;
         public Color ambient; public float fog;
+        public float xMid;        // centre en x du volume de l'étage (0 sauf -3)
         public bool pitchBlack;   // noir absolu : aucune lumière, seule la lampe du joueur éclaire
         public Color lightColor; public float lightIntensity; public int lightCount; public float flicker;
         public int danger;
@@ -290,6 +291,10 @@ public static partial class EchoesMapGenerator
                 BuildNodeLevel(L);
                 zMin = L.zMin; zMax = L.zMax;
                 break;
+            case Kind.Tunnels: // -3 : grand labyrinthe de galeries (60 × 36 m)
+                BuildTunnelMaze(L);
+                zMin = L.zMin; zMax = L.zMax;
+                break;
             case Kind.Caves:
                 BuildCaveLevel(L);
                 zMin = L.zMin; zMax = L.zMax;
@@ -309,7 +314,7 @@ public static partial class EchoesMapGenerator
         zoneGo.transform.SetParent(lvl, false);
         var box = zoneGo.AddComponent<BoxCollider>();
         box.isTrigger = true;
-        box.center = new Vector3(0f, L.y + L.h * 0.5f, (zMin + zMax) * 0.5f);
+        box.center = new Vector3(L.xMid, L.y + L.h * 0.5f, (zMin + zMax) * 0.5f);
         box.size = new Vector3(L.halfX * 2f, L.h, zMax - zMin);
         var zone = zoneGo.AddComponent<FloorZone>();
         zone.floorNumber = L.number;
