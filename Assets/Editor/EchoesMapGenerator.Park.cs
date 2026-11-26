@@ -17,7 +17,7 @@ public static partial class EchoesMapGenerator
     static readonly Vector2 LakeR = new Vector2(9f, 3.6f);
     const float LakeDepth = 1.45f, LakeWater = 0.25f;
     static readonly Rect PicnicRect = Rect.MinMaxRect(-27f, -34.5f, -9f, -22.5f);
-    static Rect LakeBasin => Rect.MinMaxRect(LakeC.x - LakeR.x - 1.5f, LakeC.y - LakeR.y - 1.5f, LakeC.x + LakeR.x + 1.5f, LakeC.y + LakeR.y + 1.5f);
+    static Rect LakeBasin => Rect.MinMaxRect(LakeC.x - LakeR.x - 4f, LakeC.y - LakeR.y - 1.5f, LakeC.x + LakeR.x + 4f, LakeC.y + LakeR.y + 1.5f); // rive irrégulière : marge en x
 
     static List<Rect> _parkBusy;
 
@@ -57,7 +57,6 @@ public static partial class EchoesMapGenerator
             Rect.MinMaxRect(WX1 + 0.4f, 7.2f, LoopX1 - PathW / 2, 9.4f),                          // cour intérieure → boucle est
             Rect.MinMaxRect(LakeC.x - 1f, LakeC.y + LakeR.y + 0.6f, LakeC.x + 1f, LoopZ0 - PathW / 2),     // boucle → lac
             Rect.MinMaxRect(PicnicRect.center.x - 1f, PicnicRect.yMax, PicnicRect.center.x + 1f, LoopZ0 - PathW / 2), // boucle → pique-nique
-            Rect.MinMaxRect(HalfX + 2.4f, CorrS - RoomDepth - 1.6f, HalfX + 3.6f, ExitZ - 1.1f),  // perron → coffret
             Rect.MinMaxRect(HalfX + 2.6f, ExitZ - 1.1f, LoopX1 - PathW / 2, ExitZ + 1.1f),          // allée d'entrée → boucle
             Rect.MinMaxRect(LoopX1 + PathW / 2, ExitZ - 1.1f, YardRect.xMax, ExitZ + 1.1f),         // boucle → portail
         };
@@ -160,24 +159,43 @@ public static partial class EchoesMapGenerator
 
     // ───────────────────────── Mini-lac ─────────────────────────
 
-    static float LakeE(float x, float z) => Mathf.Sqrt(Mathf.Pow((x - LakeC.x) / LakeR.x, 2f) + Mathf.Pow((z - LakeC.y) / LakeR.y, 2f));
+    /// Forme de la rive : rayon relatif selon l'angle (anses et avancées), 1 au nord où est le ponton.
+    static float LakeShape(float a)
+    {
+        float Raw(float t) => 1f + 0.12f * Mathf.Sin(2f * t + 0.7f) + 0.08f * Mathf.Sin(3f * t + 2.2f) + 0.05f * Mathf.Sin(5f * t + 0.9f);
+        return Raw(a) / Raw(Mathf.PI * 0.5f);
+    }
+
+    /// Largeur de la berge en terre (en fraction du rayon) selon l'angle : tantôt une plage, tantôt l'herbe jusqu'à l'eau.
+    static float LakeBank(float a) => 0.075f + 0.045f * Mathf.Sin(3f * a + 1.1f) + 0.025f * Mathf.Sin(7f * a + 0.3f);
+
+    static Vector3 LakePoint(float a, float e, float y) =>
+        new Vector3(LakeC.x + Mathf.Cos(a) * LakeR.x * e * LakeShape(a), y, LakeC.y + Mathf.Sin(a) * LakeR.y * e * LakeShape(a));
+
+    static float LakeE(float x, float z)
+    {
+        float a = Mathf.Atan2((z - LakeC.y) / LakeR.y, (x - LakeC.x) / LakeR.x);
+        return Mathf.Sqrt(Mathf.Pow((x - LakeC.x) / LakeR.x, 2f) + Mathf.Pow((z - LakeC.y) / LakeR.y, 2f)) / LakeShape(a);
+    }
 
     static void BuildLake(Transform root, LevelDef P, float gy)
     {
         // Cuvette en terre (maillage polaire, bord lisse) jusqu'à e = 1,15, légèrement sous la pelouse au bord
         var r = LakeBasin;
         const int A = 160;
-        float[] rings = { 0f, 0.2f, 0.4f, 0.55f, 0.68f, 0.78f, 0.86f, 0.92f, 0.96f, 0.99f, 1.02f, 1.06f, 1.1f, 1.15f };
+        float[] rings = { 0f, 0.2f, 0.4f, 0.55f, 0.68f, 0.78f, 0.86f, 0.92f, 0.96f, 0.99f, 1.02f, 1.06f, 1.1f, 1.15f }; // > 1 : berge (étirée selon LakeBank)
         int R = rings.Length;
         var v = new List<Vector3>(); var uv = new List<Vector2>(); var mud = new List<int>();
         for (int s = 0; s < A; s++)
         {
             float a = s * Mathf.PI * 2f / A;
-            foreach (var e in rings)
+            float bank = LakeBank(a);
+            foreach (var e0 in rings)
             {
-                float x = LakeC.x + Mathf.Cos(a) * LakeR.x * e, z = LakeC.y + Mathf.Sin(a) * LakeR.y * e;
+                float e = e0 <= 1f ? e0 : 1f + (e0 - 1f) / 0.15f * (bank + 0.04f);
                 float d = e >= 1f ? 0.03f : Mathf.Max(0.03f, LakeDepth * Mathf.Pow(1f - e * e, 0.7f));
-                v.Add(new Vector3(x, gy - d, z)); uv.Add(new Vector2(x, z));
+                var pt = LakePoint(a, e, gy - d);
+                v.Add(pt); uv.Add(new Vector2(pt.x, pt.z));
             }
         }
         for (int s = 0; s < A; s++)
@@ -200,13 +218,12 @@ public static partial class EchoesMapGenerator
         go.AddComponent<MeshCollider>().sharedMesh = mesh;
         // Pelouse autour : un seul maillage lisse, de l'ellipse (un peu sur la berge) jusqu'au bord du trou rectangulaire
         var lawn = Mat("Exterieur_Herbe", Color.white);
-        const float E = 1.12f;
         const int LA = 160;
         var lv = new List<Vector3>(); var luv = new List<Vector2>(); var lt = new List<int>();
         for (int q = 0; q < LA; q++)
         {
             float a = q * Mathf.PI * 2f / LA, cx = Mathf.Cos(a), cz = Mathf.Sin(a);
-            var inner = new Vector3(LakeC.x + cx * LakeR.x * E, gy + 0.005f, LakeC.y + cz * LakeR.y * E);
+            var inner = LakePoint(a, 1f + LakeBank(a), gy + 0.005f);
             // point du bord du rectangle dans la même direction
             float tx = cx > 1e-4f ? (r.xMax - LakeC.x) / cx : cx < -1e-4f ? (r.xMin - LakeC.x) / cx : 1e6f;
             float tz = cz > 1e-4f ? (r.yMax - LakeC.y) / cz : cz < -1e-4f ? (r.yMin - LakeC.y) / cz : 1e6f;
@@ -247,11 +264,23 @@ public static partial class EchoesMapGenerator
 
         // Eau
         float k = Mathf.Sqrt(1f - Mathf.Pow(LakeWater / LakeDepth, 1f / 0.7f)); // e où la berge croise la surface
-        var water = Cylinder(root, "Eau_Lac", new Vector3(LakeC.x, gy - LakeWater, LakeC.y), 1f, 0.02f, Quaternion.identity, WaterMat("Eau_Mini_Lac", new Color(0.55f, 0.62f, 0.6f), new Color(0.03f, 0.07f, 0.08f), 0.7f, 0f, 0.22f, 0.9f, 0.1f), false);
-        water.transform.localScale = new Vector3(LakeR.x * 2f * k, 0.01f, LakeR.y * 2f * k);
+        var wv = new List<Vector3> { new Vector3(LakeC.x, gy - LakeWater, LakeC.y) }; var wt = new List<int>();
+        for (int s = 0; s < A; s++) wv.Add(LakePoint(s * Mathf.PI * 2f / A, k + 0.015f, gy - LakeWater)); // juste sous la berge
+        for (int s = 0; s < A; s++)
+        {
+            int i1 = 1 + s, i2 = 1 + (s + 1) % A;
+            if (Vector3.Cross(wv[i1] - wv[0], wv[i2] - wv[0]).y < 0f) { wt.Add(0); wt.Add(i1); wt.Add(i2); } else { wt.Add(0); wt.Add(i2); wt.Add(i1); }
+        }
+        var wm = new Mesh { name = "Eau_Lac" };
+        wm.SetVertices(wv); wm.SetTriangles(wt, 0); wm.RecalculateNormals(); wm.RecalculateBounds();
+        AssetDatabase.AddObjectToAsset(wm, _boxContainer);
+        var water = new GameObject("Eau_Lac");
+        water.transform.SetParent(root, false);
+        water.AddComponent<MeshFilter>().sharedMesh = wm;
+        water.AddComponent<MeshRenderer>().sharedMaterial = WaterMat("Eau_Mini_Lac", new Color(0.55f, 0.62f, 0.6f), new Color(0.03f, 0.07f, 0.08f), 0.7f, 0f, 0.22f, 0.9f, 0.1f);
         water.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         water.AddComponent<Unity.AI.Navigation.NavMeshModifier>().ignoreFromBuild = true;
-        WaterVolumeBox(root, "Lac_Patauger", new Vector3(LakeC.x, gy - 0.9f, LakeC.y), new Vector3(LakeR.x * 1.9f * k, 1.5f, LakeR.y * 1.9f * k), Quaternion.identity, 0.55f, gy - LakeWater);
+        WaterVolumeBox(root, "Lac_Patauger", new Vector3(LakeC.x, gy - 0.9f, LakeC.y), new Vector3(LakeR.x * 2.3f * k, 1.5f, LakeR.y * 2.3f * k), Quaternion.identity, 0.55f, gy - LakeWater);
         WaterSound(root, new Vector3(LakeC.x, gy, LakeC.y), SndRiver, 0.12f, 18f);
 
         // Pierres et roseaux sur la berge, ponton en bois au nord
@@ -260,8 +289,8 @@ public static partial class EchoesMapGenerator
         for (int s = 0; s < n; s++)
         {
             float a = s * Mathf.PI * 2f / n + Rand(-0.08f, 0.08f);
-            float e = Rand(0.92f, 1.08f);
-            var p = new Vector3(LakeC.x + Mathf.Cos(a) * LakeR.x * e, gy, LakeC.y + Mathf.Sin(a) * LakeR.y * e);
+            float e = Rand(0.92f, 1f + LakeBank(a));
+            var p = LakePoint(a, e, gy);
             if (Physics.Raycast(p + Vector3.up * 1f, Vector3.down, out var hit, 4f, 1 << _layerGround, QueryTriggerInteraction.Ignore)) p.y = hit.point.y;
             if (Mathf.Abs(p.x - LakeC.x) < 1.6f && p.z > LakeC.y) continue; // le ponton
             if (s % 2 == 0)
@@ -282,7 +311,10 @@ public static partial class EchoesMapGenerator
         foreach (var dx in new[] { -0.8f, 0.8f })
             foreach (var z in new[] { pz0 + 0.1f, (pz0 + pz1) * 0.5f })
                 Cylinder(root, "Pilotis", new Vector3(LakeC.x + dx, gy - 0.6f, z), 0.08f, 1.2f, Quaternion.identity, wood, false);
-        var bench = Piece(P, MP("Chairs", "Chair39"), KGraveyard + "bench", new Vector3(LakeC.x, gy + 0.08f, pz0 + 0.9f), 180f, F(1.6f, 0.9f, 0.6f, 180f), wood);
+        // Banc sur l'herbe à côté du ponton, face au lac (on remonte depuis l'eau jusqu'à l'herbe, + 1,2 m)
+        float bx = LakeC.x - 3.4f, bz = LakeC.y;
+        while (bz < LakeC.y + LakeR.y * 2f && LakeE(bx, bz) < 1f + LakeBank(Mathf.Atan2((bz - LakeC.y) / LakeR.y, (bx - LakeC.x) / LakeR.x)) + 0.02f) bz += 0.05f;
+        var bench = Piece(P, MP("Chairs", "Chair39"), KGraveyard + "bench", new Vector3(bx, gy + 0.005f, bz + 1.2f), 180f, F(1.6f, 0.9f, 0.6f, 180f), wood);
         if (bench != null) AddSeat(bench, 0.45f, 180f, Vector3.zero, "S'asseoir face au lac");
         StreetLamp(P, new Vector3(LakeC.x + 1.6f, gy, pz1 + 0.4f));
     }
@@ -375,13 +407,14 @@ public static partial class EchoesMapGenerator
                 if (k < 4 && hasBush) SetupRealTree(InstantiateAt(P, BushSmall, f, Rand(0f, 360f), Vector3.one * Rand(0.7f, 1f)), false);
                 else if (hasFlower) SetupRealTree(InstantiateAt(P, Foliage + "dandelion.prefab", f, Rand(0f, 360f), Vector3.one * Rand(0.3f, 0.5f)), false);
             }
+            // Deux bancs face à face, de part et d'autre du massif (dans l'axe de la pelouse, loin de la façade)
             foreach (var s in new[] { -1f, 1f })
             {
-                float yaw = s < 0 ? 90f : -90f;
-                var b = Piece(P, MP("Chairs", "Chair40", "Chair39"), KGraveyard + "bench", new Vector3(cx + s * (rad + 1.6f), gy, cz), yaw, F(1.7f, 0.9f, 0.65f, yaw), stone);
+                float yaw = s < 0 ? 0f : 180f;
+                var b = Piece(P, MP("Chairs", "Chair40", "Chair39"), KGraveyard + "bench", new Vector3(cx, gy, cz + s * (rad + 1.3f)), yaw, F(1.7f, 0.9f, 0.65f, yaw), stone);
                 if (b != null) AddSeat(b, 0.45f, yaw, Vector3.zero, "S'asseoir sur le banc");
             }
-            _parkBusy.Add(Rect.MinMaxRect(cx - rad - 2.6f, cz - rad - 0.8f, cx + rad + 2.6f, cz + rad + 0.8f));
+            _parkBusy.Add(Rect.MinMaxRect(cx - rad - 0.8f, cz - rad - 2.2f, cx + rad + 0.8f, cz + rad + 2.2f));
             // Grands arbres aux coins de la pelouse et arbustes le long de la façade
             foreach (var (tx, tz) in new[] { (HalfX + 4.5f, za + 1.2f), (HalfX + 4.5f, zb - 1.2f), (LoopX1 - PathW - 2f, za + 1.2f), (LoopX1 - PathW - 2f, zb - 1.2f) })
             {

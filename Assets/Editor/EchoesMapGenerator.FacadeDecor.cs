@@ -188,13 +188,47 @@ public static partial class EchoesMapGenerator
 
     /// Climatiseurs, extracteurs, réservoir d'eau et trappe d'accès sur un toit.
     /// Climatiseurs et coffrets techniques sur un toit (modèles Poly Haven).
+    /// Hauteur (monde) du bas de la partie « large » d'un objet : on ignore ce qui pend dessous (tuyau, câble…).
+    static float LowestWideY(GameObject go, Bounds b)
+    {
+        var ys = new List<Vector3>();
+        foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
+        {
+            if (mf.sharedMesh == null) continue;
+            var m = mf.transform.localToWorldMatrix;
+            foreach (var v in mf.sharedMesh.vertices) ys.Add(m.MultiplyPoint3x4(v));
+        }
+        if (ys.Count == 0) return b.min.y;
+        const int bins = 50;
+        float step = b.size.y / bins;
+        for (int i = 0; i < bins; i++)
+        {
+            float y0 = b.min.y + i * step, y1 = y0 + step;
+            float xMin = float.MaxValue, xMax = float.MinValue, zMin = float.MaxValue, zMax = float.MinValue;
+            foreach (var p in ys)
+                if (p.y >= y0 && p.y < y1) { xMin = Mathf.Min(xMin, p.x); xMax = Mathf.Max(xMax, p.x); zMin = Mathf.Min(zMin, p.z); zMax = Mathf.Max(zMax, p.z); }
+            if (xMax - xMin > b.size.x * 0.4f || zMax - zMin > b.size.z * 0.6f) return y0;
+        }
+        return b.min.y;
+    }
+
     static void RoofEquipment(LevelDef R, Rect r, float top, bool big)
     {
         int n = big ? 5 : 3;
         for (int k = 0; k < n; k++)
         {
             var c = new Vector3(Mathf.Lerp(r.xMin + 4f, r.xMax - 4f, (k + 0.5f) / n), top, r.center.y + (k % 2 == 0 ? -2.2f : 1.8f));
-            CaveProp(R, "exterior_aircon_unit", c, k % 2 == 0 ? 0f : 180f, new Vector3(1.1f, 1.0f, 0.6f));
+            var ac = CaveProp(R, "exterior_aircon_unit", c, k % 2 == 0 ? 0f : 180f, new Vector3(1.1f, 1.0f, 0.6f));
+            // Modèle prévu pour un mur : son tuyau d'évacuation pend sous les équerres. Sur le toit, on le pose
+            // sur un socle en béton de la hauteur du tuyau (qui s'y cache), sinon il « flotte » sur son tuyau.
+            if (ac != null && TryBounds(ac, out var b))
+            {
+                float feet = LowestWideY(ac, b);
+                float ph = feet - b.min.y;
+                if (ph > 0.02f)
+                    Cube(R.props, "Socle_Clim", new Vector3(b.center.x, top + ph * 0.5f, b.center.z), new Vector3(b.size.x * 0.95f, ph, b.size.z * 0.9f),
+                        Quaternion.identity, Mat("Socle_Beton", new Color(0.55f, 0.54f, 0.52f)), true, _layerWalls);
+            }
         }
         if (big) CaveProp(R, "utility_box_02", new Vector3(r.xMax - 5f, top, r.center.y), 90f, new Vector3(0.8f, 1.2f, 0.5f));
     }
@@ -303,13 +337,7 @@ public static partial class EchoesMapGenerator
         CaveProp(X, "utility_box_02", new Vector3(main.xMax + 0.45f, gy, main.yMin + 2.5f), 90f, new Vector3(0.8f, 1.2f, 0.45f), true);
         foreach (var x in new[] { main.xMax + 9f, main.xMax + 18f })
             CaveProp(X, "water_manhole_cover", new Vector3(x, gy + 0.035f, ExitZ), 0f, new Vector3(0.7f, 0.04f, 0.7f));
-        // Bancs de part et d'autre de l'entrée, face à l'allée
-        foreach (var dz in new[] { -3.4f, 3.4f })
-        {
-            float yaw = dz < 0 ? 0f : 180f;
-            var seat = Piece(X, MP("Chairs", "Chair40", "Chair39"), KGraveyard + "bench", new Vector3(main.xMax + 3.6f, gy, ExitZ + dz), yaw, F(1.7f, 0.9f, 0.65f, yaw), brick);
-            if (seat != null) AddSeat(seat, 0.45f, yaw, Vector3.zero, "S'asseoir sur le banc");
-        }
+        // (pas de bancs collés à l'entrée : ceux du jardin de devant entourent les massifs — FrontGarden)
     }
 
 }
