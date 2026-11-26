@@ -127,7 +127,12 @@ public static partial class EchoesMapGenerator
         if (tree == null) return;
         var renderers = tree.GetComponentsInChildren<Renderer>();
         var lod = tree.AddComponent<LODGroup>();
-        lod.SetLODs(new[] { new LOD(0.015f, renderers) });
+        // Au loin, l'arbre (des centaines de milliers de triangles) est remplacé par son imposteur
+        _instPath.TryGetValue(tree, out var src);
+        var imp = src != null ? AddImpostor(tree, src) : null;
+        bool bush = src == BushLarge || src == BushSmall;
+        if (imp != null) lod.SetLODs(new[] { new LOD(bush ? 0.1f : 0.15f, renderers), new LOD(bush ? 0.012f : 0.006f, new[] { imp }) });
+        else lod.SetLODs(new[] { new LOD(0.015f, renderers) });
         lod.RecalculateBounds();
         foreach (var c in tree.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
         if (trunkCollider && TryBounds(tree, out var b))
@@ -147,6 +152,7 @@ public static partial class EchoesMapGenerator
         if (asset == null) return null;
         if (!_realisticPrepared) { PolyHavenModels.PrepareAll(false); FixFoliageMaterials(); _realisticPrepared = true; }
         var go = (GameObject)PrefabUtility.InstantiatePrefab(asset, L.props);
+        _instPath[go] = prefabPath;
         StripVariants(go);
         go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, rotY, 0f) * asset.transform.localRotation);
         go.transform.localScale = Vector3.one;

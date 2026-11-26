@@ -199,6 +199,7 @@ public static partial class EchoesMapGenerator
         _models = new Dictionary<string, GameObject>();
         ResetBoxMeshes();
         _skipRealistic = false; _realisticPrepared = false; _generatorMarked = false;
+        ResetImpostors();
         EnsureItems(); // fiches et modèles des objets ramassables
         EnsureCaveNotes();
         _rng = new System.Random(Seed);

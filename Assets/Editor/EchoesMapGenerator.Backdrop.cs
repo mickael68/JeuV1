@@ -309,7 +309,11 @@ public static partial class EchoesMapGenerator
             var tmp = (GameObject)PrefabUtility.InstantiatePrefab(src);
             float h = TryBounds(tmp, out var b) ? Mathf.Max(0.5f, b.size.y) : 10f;
             var lod = tmp.AddComponent<LODGroup>();
-            lod.SetLODs(new[] { new LOD(0.008f, tmp.GetComponentsInChildren<Renderer>()) });
+            var real = tmp.GetComponentsInChildren<Renderer>();
+            var imp = AddImpostor(tmp, path);
+            bool isBush = path == BushLarge || path == BushSmall;
+            if (imp != null) lod.SetLODs(new[] { new LOD(isBush ? 0.1f : 0.15f, real), new LOD(isBush ? 0.01f : 0.004f, new[] { imp }) });
+            else lod.SetLODs(new[] { new LOD(0.008f, real) });
             lod.RecalculateBounds();
             EnsureFolder(MatFolder + "/Arbres_Terrain");
             var prefab = PrefabUtility.SaveAsPrefabAsset(tmp, $"{MatFolder}/Arbres_Terrain/{System.IO.Path.GetFileNameWithoutExtension(path)}.prefab");
@@ -354,20 +358,9 @@ public static partial class EchoesMapGenerator
 
     static int BuildImpostorForest(Transform parent, float gy)
     {
-        var atlas = ImpostorAtlas(out int tiles);
-        if (atlas == null) return 0;
-        var m = Mat("Decor_Imposteurs", Color.white, 0f);
-        m.SetTexture("_BaseMap", atlas);
-        m.SetTextureScale("_BaseMap", Vector2.one);
-        m.SetFloat("_AlphaClip", 1f); m.SetFloat("_Cutoff", 0.45f); m.EnableKeyword("_ALPHATEST_ON");
-        m.SetFloat("_Cull", 0f);
-        m.SetTexture("_BumpMap", null); m.DisableKeyword("_NORMALMAP");
-        m.SetTexture("_MetallicGlossMap", null); m.DisableKeyword("_METALLICSPECGLOSSMAP");
-        m.SetFloat("_Smoothness", 0f);
-        m.SetFloat("_EnvironmentReflections", 0f); m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
-        m.SetOverrideTag("RenderType", "TransparentCutout");
-        m.renderQueue = (int)RenderQueue.AlphaTest;
-        EditorUtility.SetDirty(m);
+        var m = ImpostorMaterial();
+        if (m == null) return 0;
+        int tiles = ImpostorPrefabs.Length, forestTiles = ForestPrefabs.Length;
 
         var root = Child(parent, "Foret_Lointaine");
         const float cell = 600f;
@@ -384,7 +377,7 @@ public static partial class EchoesMapGenerator
             if (BackdropSlope(x, z) > 36f) continue;
             var key = new Vector2Int(Mathf.FloorToInt(x / cell), Mathf.FloorToInt(z / cell));
             if (!chunks.TryGetValue(key, out var c)) chunks[key] = c = (new System.Collections.Generic.List<Vector3>(), new System.Collections.Generic.List<Vector2>(), new System.Collections.Generic.List<int>());
-            int tile = h > 150f || _rng.NextDouble() < 0.5 ? 0 : _rng.Next(tiles); // les conifères dominent en altitude
+            int tile = h > 150f || _rng.NextDouble() < 0.5 ? 0 : _rng.Next(forestTiles); // les conifères dominent en altitude
             float th = Rand(10f, 19f) * Mathf.Lerp(1f, 1.35f, Mathf.Clamp01((dist - 150f) / 800f)), tw = th * 0.5f;
             var basePt = new Vector3(x, gy + h - 0.6f, z);
             float yaw = Rand(0f, Mathf.PI);
@@ -422,13 +415,96 @@ public static partial class EchoesMapGenerator
     }
 
     /// Photographie chaque arbre de la forêt (fond magenta rendu transparent) dans une bande de vignettes 256 × 512.
+    /// Arbres et buissons qui ont un imposteur (une case de l'atlas chacun, dans cet ordre ; les 4 premiers = forêt lointaine).
+    static readonly string[] ImpostorPrefabs = { ForestPrefabs[0], ForestPrefabs[1], ForestPrefabs[2], ForestPrefabs[3], Foliage + "apple.prefab", BushLarge, BushSmall };
+    static (Vector3 offset, float size)[] _impFrame;
+    static Material _impMat;
+    static readonly System.Collections.Generic.Dictionary<int, Mesh> _impMeshes = new System.Collections.Generic.Dictionary<int, Mesh>();
+    static readonly System.Collections.Generic.Dictionary<GameObject, string> _instPath = new System.Collections.Generic.Dictionary<GameObject, string>();
+
+    static void ResetImpostors() { _impMat = null; _impFrame = null; _impMeshes.Clear(); _instPath.Clear(); }
+
+    /// Matériau des imposteurs (atlas rendu une fois par génération).
+    static Material ImpostorMaterial()
+    {
+        if (_impMat != null) return _impMat;
+        if (!_realisticPrepared) { PolyHavenModels.PrepareAll(false); FixFoliageMaterials(); _realisticPrepared = true; }
+        var atlas = ImpostorAtlas(out _);
+        if (atlas == null) return null;
+        var m = Mat("Decor_Imposteurs", Color.white, 0f);
+        m.SetTexture("_BaseMap", atlas);
+        m.SetTextureScale("_BaseMap", Vector2.one);
+        m.SetFloat("_AlphaClip", 1f); m.SetFloat("_Cutoff", 0.45f); m.EnableKeyword("_ALPHATEST_ON");
+        m.SetFloat("_Cull", 0f);
+        m.SetTexture("_BumpMap", null); m.DisableKeyword("_NORMALMAP");
+        m.SetTexture("_MetallicGlossMap", null); m.DisableKeyword("_METALLICSPECGLOSSMAP");
+        m.SetFloat("_Smoothness", 0f);
+        m.SetFloat("_EnvironmentReflections", 0f); m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+        m.SetOverrideTag("RenderType", "TransparentCutout");
+        m.renderQueue = (int)RenderQueue.AlphaTest;
+        m.enableInstancing = true;
+        EditorUtility.SetDirty(m);
+        return _impMat = m;
+    }
+
+    /// Deux plans croisés de 1 x 2 (centrés) portant la case `tile` de l'atlas.
+    static Mesh ImpostorMesh(int tile)
+    {
+        if (_impMeshes.TryGetValue(tile, out var mesh) && mesh != null) return mesh;
+        int tiles = ImpostorPrefabs.Length;
+        float u0 = (float)tile / tiles, u1 = (float)(tile + 1) / tiles;
+        var v = new System.Collections.Generic.List<Vector3>(); var uv = new System.Collections.Generic.List<Vector2>(); var t = new System.Collections.Generic.List<int>();
+        for (int q = 0; q < 2; q++)
+        {
+            var d = q == 0 ? new Vector3(0.5f, 0f, 0f) : new Vector3(0f, 0f, 0.5f);
+            int i0 = v.Count;
+            v.Add(-d - Vector3.up); v.Add(d - Vector3.up); v.Add(d + Vector3.up); v.Add(-d + Vector3.up);
+            uv.Add(new Vector2(u0, 0f)); uv.Add(new Vector2(u1, 0f)); uv.Add(new Vector2(u1, 1f)); uv.Add(new Vector2(u0, 1f));
+            t.Add(i0); t.Add(i0 + 2); t.Add(i0 + 1); t.Add(i0); t.Add(i0 + 3); t.Add(i0 + 2);
+        }
+        mesh = new Mesh { name = "Imposteur_" + tile };
+        mesh.SetVertices(v); mesh.SetUVs(0, uv); mesh.SetTriangles(t, 0);
+        var n = new Vector3[v.Count];
+        for (int i = 0; i < n.Length; i++) n[i] = new Vector3(0.25f, 1f, 0.15f).normalized;
+        mesh.normals = n;
+        mesh.RecalculateBounds();
+        AssetDatabase.AddObjectToAsset(mesh, _boxContainer);
+        return _impMeshes[tile] = mesh;
+    }
+
+    /// Ajoute à un arbre (instance du prefab `prefabPath`) sa version lointaine : plans croisés texturés, sans ombre.
+    static Renderer AddImpostor(GameObject tree, string prefabPath)
+    {
+        int tile = System.Array.IndexOf(ImpostorPrefabs, prefabPath);
+        if (tile < 0) return null;
+        var mat = ImpostorMaterial();
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        if (mat == null || asset == null || _impFrame == null || _impFrame[tile].size <= 0f) return null;
+        var f = _impFrame[tile];
+        var t = tree.transform;
+        float s = t.lossyScale.x / Mathf.Max(1e-4f, asset.transform.localScale.x);
+        var yaw = t.rotation * Quaternion.Inverse(asset.transform.localRotation); // rotation propre à cette instance
+        var go = new GameObject("Imposteur");
+        go.transform.SetPositionAndRotation(t.position + yaw * (f.offset * s), yaw);
+        go.transform.localScale = Vector3.one * (f.size * s);
+        go.transform.SetParent(t, true);
+        go.layer = tree.layer;
+        go.AddComponent<MeshFilter>().sharedMesh = ImpostorMesh(tile);
+        var mr = go.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = mat;
+        mr.shadowCastingMode = ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        return mr;
+    }
+
     static Texture2D ImpostorAtlas(out int tiles)
     {
         tiles = 0;
         var prefabs = new System.Collections.Generic.List<GameObject>();
-        foreach (var p in ForestPrefabs) { var g = AssetDatabase.LoadAssetAtPath<GameObject>(p); if (g != null) prefabs.Add(g); }
-        if (prefabs.Count == 0) return null;
+        foreach (var p in ImpostorPrefabs) prefabs.Add(AssetDatabase.LoadAssetAtPath<GameObject>(p));
+        if (prefabs[0] == null) return null;
         tiles = prefabs.Count;
+        _impFrame = new (Vector3 offset, float size)[tiles];
         const int W = 256, H = 512;
         var atlas = new Texture2D(W * tiles, H, TextureFormat.RGBA32, false);
         var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB) { antiAliasing = 1 };
@@ -443,12 +519,14 @@ public static partial class EchoesMapGenerator
         bool fog = RenderSettings.fog; RenderSettings.fog = false;
         for (int k = 0; k < tiles; k++)
         {
+            if (prefabs[k] == null) continue;
             var go = (GameObject)Object.Instantiate(prefabs[k]);
             go.transform.position = new Vector3(0f, -4000f, 0f);
             foreach (var tr in go.GetComponentsInChildren<Transform>(true)) tr.gameObject.layer = 31;
             if (!TryBounds(go, out var b)) { Object.DestroyImmediate(go); continue; }
             float aspect = (float)W / H;
             cam.orthographicSize = Mathf.Max(b.extents.y, b.extents.x / aspect, b.extents.z / aspect) * 1.04f;
+            _impFrame[k] = (b.center - go.transform.position, cam.orthographicSize); // cadrage, pour poser l'imposteur au même endroit
             camGo.transform.SetPositionAndRotation(new Vector3(b.center.x, b.center.y, b.center.z - 60f), Quaternion.identity);
             cam.nearClipPlane = 1f; cam.farClipPlane = 200f;
             cam.Render();
